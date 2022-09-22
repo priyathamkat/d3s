@@ -1,12 +1,8 @@
-import sys
-
-sys.path.append("../scripts")
-
 import numpy as np
 import torch
 from einops import rearrange, repeat
-from img2img import load_model_from_config  # type: ignore
 from ldm.models.diffusion.ddim import DDIMSampler
+from ldm.util import instantiate_from_config
 from omegaconf import OmegaConf
 from PIL import Image
 from pytorch_lightning import seed_everything
@@ -14,9 +10,30 @@ from torch import autocast
 from torchvision.utils import make_grid
 from tqdm import trange
 
+CONFIG_PATH = "/cmlscratch/pkattaki/void/stable-diffusion/configs/stable-diffusion/v1-inference.yaml"
+CKPT_PATH = "/cmlscratch/pkattaki/void/stable-diffusion/models/ldm/stable-diffusion-v4/sd-v1-4.ckpt"
+
+def load_model_from_config(config, ckpt, verbose=False):
+    print(f"Loading model from {ckpt}")
+    pl_sd = torch.load(ckpt, map_location="cpu")
+    if "global_step" in pl_sd:
+        print(f"Global Step: {pl_sd['global_step']}")
+    sd = pl_sd["state_dict"]
+    model = instantiate_from_config(config.model)
+    m, u = model.load_state_dict(sd, strict=False)
+    if len(m) > 0 and verbose:
+        print("missing keys:")
+        print(m)
+    if len(u) > 0 and verbose:
+        print("unexpected keys:")
+        print(u)
+
+    model.cuda()
+    model.eval()
+    return model
 
 class DiffusionGenerator():
-    def __init__(self, seed=42, config_path="../configs/stable-diffusion/v1-inference.yaml", ckpt_path="../models/ldm/stable-diffusion-v4/sd-v1-4.ckpt"):
+    def __init__(self, seed=42, config_path=CONFIG_PATH, ckpt_path=CKPT_PATH):
         seed_everything(seed)
 
         config = OmegaConf.load(config_path)
