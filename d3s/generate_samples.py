@@ -10,7 +10,7 @@ from torchvision import transforms as T
 from tqdm import trange
 
 from diffusion_generator import DiffusionGenerator
-from salient_imagenet import MTurkResults, SalientImageNet
+from d3s.datasets.salient_imagenet import MTurkResults, SalientImageNet
 from utils import paste_on_bg
 
 logging.getLogger("seed").setLevel(logging.CRITICAL)
