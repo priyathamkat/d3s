@@ -1,0 +1,10 @@
+on grass
+on a road
+in a forest
+in water
+indoors
+next to a toilet
+in snow
+with a cat
+in rain
+at night
