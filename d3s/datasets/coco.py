@@ -1,14 +1,12 @@
-import os.path
-from pathlib import Path
 from typing import Any, Callable, List, Optional, Tuple
 
-from PIL import Image
 import numpy as np
 import torch
+from constants import COCO_ROOT
+from PIL import Image
 from torchvision.datasets import VisionDataset
 from torchvision.transforms import Lambda
 
-COCO_ROOT = Path("/fs/cml-datasets/coco/")
 MASK_TRANSFORM = Lambda(lambda x: torch.from_numpy(x))
 
 class CocoDetection(VisionDataset):
@@ -63,7 +61,7 @@ class CocoDetection(VisionDataset):
 
     def _load_image(self, id: int) -> Image.Image:
         path = self.coco.loadImgs(id)[0]["file_name"]
-        return Image.open(os.path.join(self.root, path)).convert("RGB")
+        return Image.open(self.root / path).convert("RGB")
 
     def _load_target(self, id: int) -> List[Any]:
         return self.coco.loadAnns(self.coco.getAnnIds(id))
