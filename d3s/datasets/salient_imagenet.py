@@ -24,6 +24,9 @@ class SalientImageNet(Dataset):
         resize_size=256,
         crop_size=224,
     ):
+        with open("./txt_data/imagenet_classes.txt", "r") as f:
+            self.classes = eval(f.read())
+        
         self.transform = transforms.Compose(
             [
                 transforms.Resize(resize_size),

@@ -41,7 +41,7 @@ class CocoDetection(VisionDataset):
         from pycocotools.coco import COCO
 
         self.coco = COCO(annFile)
-        self.cat_names = [cat["name"] for cat in self.coco.loadCats(self.coco.getCatIds())]
+        self.classes = [cat["name"] for cat in self.coco.loadCats(self.coco.getCatIds())]
         self._cat = None
         self.mask_transform = mask_transform
         self._rng = np.random.default_rng()
