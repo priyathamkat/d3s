@@ -1,2 +1,2 @@
-# d3s
+# D3S
 Diffusion Dreamed Distribution Shifts
