@@ -1,17 +1,11 @@
-import os
 from collections import defaultdict
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from constants import IMAGENET_PATH, SALIENT_IMAGENET_PATH
+from constants import IMAGENET_PATH, SALIENT_IMAGENET_MASKS_PATH, MTURK_RESULTS_CSV_PATH
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms as transforms
-
-SALIENT_IMAGENET_MASKS_PATH = SALIENT_IMAGENET_PATH / "salient_imagenet_dataset"
-MTURK_RESULTS_CSV_PATH = SALIENT_IMAGENET_PATH / "salient_imagenet-main/mturk_results/discover_spurious_features.csv"
-
 
 class SalientImageNet(Dataset):
     def __init__(
@@ -34,13 +28,13 @@ class SalientImageNet(Dataset):
             ]
         )
 
-        wordnet_dict = eval(open(os.path.join(masks_path, "wordnet_dict.py")).read())
+        wordnet_dict = eval(open(masks_path / "wordnet_dict.py").read())
         wordnet_id = wordnet_dict[class_index]
 
-        self.images_path = os.path.join(images_path, "train", wordnet_id)
-        self.masks_path = os.path.join(masks_path, wordnet_id)
+        self.images_path = images_path / "train" / wordnet_id
+        self.masks_path = masks_path / wordnet_id
 
-        image_names_file = os.path.join(self.masks_path, "image_names_map.csv")
+        image_names_file = self.masks_path / "image_names_map.csv"
         image_names_df = pd.read_csv(image_names_file)
 
         image_names = []
@@ -60,7 +54,7 @@ class SalientImageNet(Dataset):
 
     def __getitem__(self, index):
         image_name = self.image_names[index]
-        curr_image_path = os.path.join(self.images_path, image_name + ".JPEG")
+        curr_image_path = self.images_path / (image_name + ".JPEG")
 
         image = Image.open(curr_image_path).convert("RGB")
         image_tensor = self.transform(image)
@@ -69,9 +63,7 @@ class SalientImageNet(Dataset):
 
         all_mask = np.zeros(image_tensor.shape[1:])
         for feature_index in feature_indices:
-            curr_mask_path = os.path.join(
-                self.masks_path, "feature_" + str(feature_index), image_name + ".JPEG"
-            )
+            curr_mask_path = self.masks_path / ("feature_" + str(feature_index)) / (image_name + ".JPEG")
 
             mask = np.asarray(Image.open(curr_mask_path))
             mask = mask / 255.0
