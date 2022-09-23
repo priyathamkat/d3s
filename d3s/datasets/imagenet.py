@@ -10,3 +10,6 @@ class ImageNet(D.ImageNet):
 
         with open("./txt_data/imagenet_classes.txt", "r") as f:
             self.classes = eval(f.read())
+
+        with open("./txt_data/imagenet_dictionary.txt", "r") as f:
+            self.dictionary = eval(f.read())
