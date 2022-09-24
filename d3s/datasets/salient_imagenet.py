@@ -1,11 +1,14 @@
 from collections import defaultdict
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from constants import IMAGENET_PATH, SALIENT_IMAGENET_MASKS_PATH, MTURK_RESULTS_CSV_PATH
+from constants import (IMAGENET_PATH, MTURK_RESULTS_CSV_PATH,
+                       SALIENT_IMAGENET_MASKS_PATH)
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms as transforms
+
 
 class SalientImageNet(Dataset):
     def __init__(
@@ -17,10 +20,10 @@ class SalientImageNet(Dataset):
         resize_size=256,
         crop_size=224,
     ):
-        with open("./txt_data/imagenet_classes.txt", "r") as f:
+        with open(Path(__file__).parent.parent / "txt_data/imagenet_classes.txt", "r") as f:
             self.classes = eval(f.read())
 
-        with open("./txt_data/imagenet_dictionary.txt", "r") as f:
+        with open(Path(__file__).parent.parent / "txt_data/imagenet_dictionary.txt", "r") as f:
             self.dictionary = eval(f.read())
         
         self.transform = transforms.Compose(
