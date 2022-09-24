@@ -24,7 +24,7 @@ class SalientImageNet(Dataset):
             self.classes = eval(f.read())
 
         with open(Path(__file__).parent.parent / "txt_data/imagenet_dictionary.txt", "r") as f:
-            self.dictionary = eval(f.read())
+            self.dictionary = {int(k): v for k, v in eval(f.read()).items()}
         
         self.transform = transforms.Compose(
             [
