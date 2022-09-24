@@ -10,7 +10,7 @@ class ImageNet(D.ImageNet):
         super().__init__(IMAGENET_PATH, split, **kwargs)
 
         with open(Path(__file__).parent.parent / "txt_data/imagenet_classes.txt", "r") as f:
-            self.classes = eval(f.read())
+            self.classes = {int(k): v.split(",")[0] for k, v in eval(f.read()).items()}
 
         with open(Path(__file__).parent.parent / "txt_data/imagenet_dictionary.txt", "r") as f:
             self.dictionary = {int(k): v for k, v in eval(f.read()).items()}
