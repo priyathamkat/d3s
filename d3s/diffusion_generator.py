@@ -54,14 +54,17 @@ class DiffusionGenerator:
         self.precision_scope = autocast
 
     def conditional_generate(
-        self, prompt, init_image, strength, ddim_steps=50, ddim_eta=0.0
+        self, prompt, init_image, strength, ddim_steps=50, ddim_eta=0.0, return_init=False
     ):
         scale = 5.0
         n_rows = 2
         data = [self.batch_size * [prompt]]
 
         init_image = init_image.to(self.device)
-        all_samples = [(init_image + 1.0) / 2.0]
+        if return_init:
+            all_samples = [(init_image + 1.0) / 2.0]
+        else:
+            all_samples = []
         init_image = repeat(init_image, "1 ... -> b ...", b=self.batch_size)
         init_latent = self.model.get_first_stage_encoding(
             self.model.encode_first_stage(init_image)

@@ -1,17 +1,15 @@
+import json
 import logging
 from pathlib import Path
-from typing import List
 
 import numpy as np
 from absl import app, flags
-from matplotlib import pyplot as plt
-from PIL import Image
 from torchvision import transforms as T
 from tqdm import trange
 
-from diffusion_generator import DiffusionGenerator
-from d3s.datasets.salient_imagenet import MTurkResults, SalientImageNet
-from utils import paste_on_bg
+from d3s.datasets import CocoDetection, ImageNet, SalientImageNet
+from d3s.diffusion_generator import DiffusionGenerator
+from d3s.input_generator import InputGenerator
 
 logging.getLogger("seed").setLevel(logging.CRITICAL)
 
@@ -24,113 +22,82 @@ flags.DEFINE_enum(
     ["imagenet", "salient-imagenet", "coco"],
     "Dataset to generate samples for",
 )
+flags.DEFINE_float("strength", 0.9, "Noise strength for diffusion model")
+flags.DEFINE_string("output_folder", None, "Output folder for generated images")
+flags.DEFINE_string("template_file", None, "File containing prompt template")
+flags.DEFINE_bool("use_init_image", True, "Use init image for initialization")
+flags.DEFINE_bool(
+    "use_background_image", True, "Use background image for initialization"
+)
 flags.DEFINE_bool("use_mask", False, "Use masked images for initialization")
 flags.DEFINE_float("fg_scale", 0.4, "Scale of foreground image to background")
-flags.DEFINE_float("strength", 0.9, "Noise strength for diffusion model")
+flags.DEFINE_bool("save_init", False, "Save init_image along with generated image")
+
+flags.register_validator(
+    "use_background_image",
+    lambda value: FLAGS.use_init_image or not value,
+    "Cannot use background image without init image",
+)
+flags.register_validator(
+    "use_mask",
+    lambda value: FLAGS.use_init_image or not value,
+    "Cannot use mask without init image",
+)
+flags.register_validator(
+    "use_mask",
+    lambda value: FLAGS.dataset != "imagenet" or not value,
+    "Cannot use mask with ImageNet",
+)
 
 rng = np.random.default_rng()
 
 
-class FGImages:
-    def __init__(self) -> None:
-        mturk_results = MTurkResults()
-        self.core_features_dict = mturk_results.core_features_dict
-
-    def get_images(self, dataset, class_idx, use_mask=False):
-        if dataset == "salient-imagenet":
-            dataset = SalientImageNet(class_idx, self.core_features_dict[class_idx])
-            for image, mask in dataset:
-                if use_mask:
-                    image = image * mask
-                image = T.ToPILImage()(image)
-                yield image, mask
-        else:
-            raise NotImplementedError
-
-
-def get_class_list(dataset):
-    if dataset == "salient-imagenet" or dataset == "imagenet":
-        with open("./imagenet_classes.txt", "r") as f:
-            class_list = eval(f.read())
-    else:
-        raise NotImplementedError
-
-    return class_list
-
-
-def get_background(bg_prompt, images_folder):
-    for subfolder in images_folder.iterdir():
-        if subfolder.name in bg_prompt:
-            return rng.choice([p for p in subfolder.iterdir() if p.suffix == ".jpeg"])
-
-
-def get_random_backgrounds(num_samples, bg_prompt_templates, images_folder):
-    bgs = []
-    bg_prompts = []
-    for _ in range(num_samples):
-        bg_prompt = rng.choice(bg_prompt_templates)
-        bg_prompts.append(bg_prompt)
-        bgs.append(get_background(bg_prompt, images_folder))
-    return bg_prompts, bgs
-
-
 def main(argv):
+    if FLAGS.dataset == "imagenet":
+        dataset = ImageNet()
+    elif FLAGS.dataset == "salient-imagenet":
+        dataset = SalientImageNet()
+    else:
+        dataset = CocoDetection()
+
+    input_generator = InputGenerator(dataset, FLAGS.template_file)
 
     diffusion = DiffusionGenerator()
+
     image_transform = T.Compose(
         [
             T.ToTensor(),
             T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+            T.Lambda(lambda x: x.unsqueeze(0)),
         ]
     )
 
-    classes = get_class_list(FLAGS.dataset)
-    fg_images = FGImages()
+    outputs_folder = Path(FLAGS.output_folder)
+    outputs_folder.mkdir(exist_ok=True)
+    FLAGS.append_flags_into_file(outputs_folder / "flags.txt")
 
-    images_folder = Path("./images/backgrounds/")
-    outputs_folder = Path("./images/outputs")
+    metadata = {}
 
-    with open("./bg_prompt_templates.txt", "r") as f:
-        bg_prompt_templates = f.readlines()
+    for i in trange(FLAGS.num_samples):
+        if FLAGS.use_init_image:
+            prompt, init_image, args = input_generator.generate_input(
+                use_background_image=FLAGS.use_background_image,
+                use_mask=FLAGS.use_mask,
+                fg_scale=FLAGS.fg_scale,
+            )
+            init_image = image_transform(init_image)
+            generated_image = diffusion.conditional_generate(
+                prompt, init_image, FLAGS.strength, return_init=FLAGS.save_init
+            )
+        else:
+            prompt, args = input_generator.generate_prompt()
+            generated_image = diffusion.unconditional_generate(prompt, FLAGS.strength)
+        save_name = f"{i}.png"
+        generated_image.save(outputs_folder / save_name)
+        metadata[save_name] = {"prompt": prompt, "args": args}
 
-    num_classes = FLAGS.num_samples // len(bg_prompt_templates)
-    px = 1 / plt.rcParams["figure.dpi"]
-    nrows = num_classes
-    ncols = len(bg_prompt_templates)
-    fig, axes = plt.subplots(
-        nrows=nrows,
-        ncols=ncols,
-        squeeze=False,
-        figsize=(400 * (ncols + 1) * px, 200 * (nrows + 1) * px),
-    )
-
-    for ax, bg_prompt in zip(axes[0], bg_prompt_templates):
-        ax.set_title(bg_prompt)
-
-    with trange(FLAGS.num_samples) as pbar:
-        for i in range(num_classes):
-            class_idx = rng.choice(len(classes))
-            class_name = classes[class_idx]
-            class_name = class_name.split(",")[0]
-            axes[i, 0].set_ylabel(class_name, rotation=90, size="large")
-            fgs = iter(fg_images.get_images(FLAGS.dataset, class_idx, FLAGS.use_mask))
-            for j, ((fg, mask), bg_prompt) in enumerate(zip(fgs, bg_prompt_templates)):
-                bg = get_background(bg_prompt, images_folder)
-                bg = Image.open(bg)
-                if FLAGS.dataset == "salient-imagenet":
-                    init_image = paste_on_bg(fg, bg, size=512, fg_scale=FLAGS.fg_scale)
-                    init_image = image_transform(init_image).unsqueeze(0)
-                    prompt = f"a photo of a {class_name} {bg_prompt}"
-                    output = diffusion.conditional_generate(
-                        prompt, init_image, FLAGS.strength
-                    )
-                    output.save(outputs_folder / f"{prompt}.png")
-                    axes[i, j].imshow(output.resize((400, 200), Image.Resampling.BICUBIC))
-                else:
-                    raise NotImplementedError
-                pbar.update(1)
-    fig.tight_layout()
-    plt.savefig(outputs_folder / "outputs.png")
+    with open(outputs_folder / "metadata.txt", "w") as f:
+        json.dump(metadata, f)
 
 
 if __name__ == "__main__":
