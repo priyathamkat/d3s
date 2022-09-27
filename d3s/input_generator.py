@@ -20,6 +20,7 @@ class InputGenerator:
         dataset (Any): dataset to generate input from
         template_file (Union[str, Path]): template file to generate prompt from
     """
+
     def __init__(self, dataset: Any, template_file: Union[str, Path]) -> None:
         self.dataset = dataset
 
@@ -169,7 +170,9 @@ if __name__ == "__main__":
         "/cmlscratch/pkattaki/void/d3s/d3s/recipes/prompts/photo-definition-background.yaml",
     )
     prompt, image, _ = input_generator.generate_input(
-        class_idx=100, use_background_image=True, use_mask=False,
+        class_idx=100,
+        use_background_image=True,
+        use_mask=False,
     )
     print(prompt)
     image.save("test.png")

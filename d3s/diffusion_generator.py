@@ -54,7 +54,13 @@ class DiffusionGenerator:
         self.precision_scope = autocast
 
     def conditional_generate(
-        self, prompt, init_image, strength, ddim_steps=50, ddim_eta=0.0, return_init=False
+        self,
+        prompt,
+        init_image,
+        strength,
+        ddim_steps=50,
+        ddim_eta=0.0,
+        return_init=False,
     ):
         scale = 5.0
         n_rows = 2
