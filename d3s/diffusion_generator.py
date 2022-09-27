@@ -51,7 +51,7 @@ class DiffusionGenerator():
 
 
 
-    def conditional_generate(self, prompt, init_image, strength, mask=None, ddim_steps=50, ddim_eta=0.0):   
+    def conditional_generate(self, prompt, init_image, strength, ddim_steps=50, ddim_eta=0.0):   
         scale = 5.0
         n_rows = 2
         data = [self.batch_size * [prompt]]
@@ -60,11 +60,6 @@ class DiffusionGenerator():
         all_samples = [(init_image + 1.0) / 2.0]
         init_image = repeat(init_image, '1 ... -> b ...', b=self.batch_size)
         init_latent = self.model.get_first_stage_encoding(self.model.encode_first_stage(init_image))  # move to latent space
-
-        if mask is not None:
-            mask = torch.from_numpy(mask).to(self.device)
-            w = mask.shape[0]
-            mask = mask.reshape(1, 1, w, w)
 
         self.sampler.make_schedule(ddim_num_steps=ddim_steps, ddim_eta=ddim_eta, verbose=False)
 
@@ -87,7 +82,7 @@ class DiffusionGenerator():
                             z_enc = self.sampler.stochastic_encode(init_latent, torch.tensor([t_enc]*self.batch_size).to(self.device))
                             # decode it
                             samples = self.sampler.decode(z_enc, c, t_enc, unconditional_guidance_scale=scale,
-                                                    unconditional_conditioning=uc, mask=mask, x0=init_image)
+                                                    unconditional_conditioning=uc, x0=init_image)
 
                             x_samples = self.model.decode_first_stage(samples)
                             x_samples = torch.clamp((x_samples + 1.0) / 2.0, min=0.0, max=1.0)
