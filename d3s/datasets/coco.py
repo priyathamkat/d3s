@@ -2,12 +2,13 @@ from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
 import torch
-from constants import COCO_ROOT
+from d3s.constants import COCO_ROOT
 from PIL import Image
 from torchvision.datasets import VisionDataset
 from torchvision.transforms import Lambda
 
 MASK_TRANSFORM = Lambda(lambda x: torch.from_numpy(x))
+
 
 class CocoDetection(VisionDataset):
     """`MS Coco Detection <https://cocodataset.org/#detection-2016>`_ Dataset.
@@ -39,7 +40,9 @@ class CocoDetection(VisionDataset):
         from pycocotools.coco import COCO
 
         self.coco = COCO(annFile)
-        self.classes = [cat["name"] for cat in self.coco.loadCats(self.coco.getCatIds())]
+        self.classes = [
+            cat["name"] for cat in self.coco.loadCats(self.coco.getCatIds())
+        ]
         self._cat = None
         self.mask_transform = mask_transform
         self._rng = np.random.default_rng()
@@ -57,7 +60,6 @@ class CocoDetection(VisionDataset):
         else:
             self.catId = self.coco.getCatIds(catNms=[c])[0]
             self.ids = sorted(self.coco.getImgIds(catIds=[self.catId]))
-
 
     def _load_image(self, id: int) -> Image.Image:
         path = self.coco.loadImgs(id)[0]["file_name"]
@@ -85,7 +87,7 @@ class CocoDetection(VisionDataset):
 
         if self.transforms is not None:
             image, target = self.transforms(image, target)
-        
+
         if self.catId is not None:
             mask = self._get_consolidated_mask(target)
             if self.mask_transform:
@@ -94,10 +96,9 @@ class CocoDetection(VisionDataset):
         else:
             return image, target
 
-    def get_random(self):
+    def get_random(self, _):
         index = self._rng.choice(len(self))
         return self[index]
-
 
     def __len__(self) -> int:
         return len(self.ids)

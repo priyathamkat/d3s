@@ -3,8 +3,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from constants import (IMAGENET_PATH, MTURK_RESULTS_CSV_PATH,
-                       SALIENT_IMAGENET_MASKS_PATH)
+from d3s.constants import (IMAGENET_PATH, MTURK_RESULTS_CSV_PATH,
+                           SALIENT_IMAGENET_MASKS_PATH)
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms as transforms
@@ -20,12 +20,18 @@ class SalientImageNet(Dataset):
         resize_size=256,
         crop_size=224,
     ):
-        with open(Path(__file__).parent.parent / "txt_data/imagenet_classes.txt", "r") as f:
+        with open(
+            Path(__file__).parent.parent / "txt_data/imagenet_classes.txt", "r"
+        ) as f:
             self.classes = {int(k): v.split(",")[0] for k, v in eval(f.read()).items()}
 
-        with open(Path(__file__).parent.parent / "txt_data/imagenet_dictionary.txt", "r") as f:
+        with open(
+            Path(__file__).parent.parent / "txt_data/imagenet_dictionary.txt", "r"
+        ) as f:
             self.dictionary = {int(k): v for k, v in eval(f.read()).items()}
-        
+
+        self._rng = np.random.default_rng()
+
         self.transform = transforms.Compose(
             [
                 transforms.Resize(resize_size),
@@ -69,7 +75,11 @@ class SalientImageNet(Dataset):
 
         all_mask = np.zeros(image_tensor.shape[1:])
         for feature_index in feature_indices:
-            curr_mask_path = self.masks_path / ("feature_" + str(feature_index)) / (image_name + ".JPEG")
+            curr_mask_path = (
+                self.masks_path
+                / ("feature_" + str(feature_index))
+                / (image_name + ".JPEG")
+            )
 
             mask = np.asarray(Image.open(curr_mask_path))
             mask = mask / 255.0
@@ -80,6 +90,10 @@ class SalientImageNet(Dataset):
         all_mask = Image.fromarray(all_mask)
         mask_tensor = self.transform(all_mask)
         return image_tensor, mask_tensor
+
+    def get_random(self, _):
+        index = self._rng.choice(len(self))
+        return self[index]
 
 
 class MTurkResults:
