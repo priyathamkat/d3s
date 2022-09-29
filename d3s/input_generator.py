@@ -8,7 +8,7 @@ from PIL import Image
 
 from d3s.datasets.coco import CocoDetection
 from d3s.datasets.salient_imagenet import SalientImageNet
-from utils import paste_on_bg
+from d3s.utils import paste_on_bg
 
 rng = np.random.default_rng()
 
