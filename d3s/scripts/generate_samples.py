@@ -86,7 +86,7 @@ def main(argv):
             )
         else:
             prompt, args = input_generator.generate_prompt()
-            generated_image = diffusion.unconditional_generate(prompt, FLAGS.strength)
+            generated_image = diffusion.unconditional_generate(prompt)
         save_name = f"{i}.png"
         generated_image.save(outputs_folder / save_name)
         metadata[save_name] = {"prompt": prompt, "args": args}
