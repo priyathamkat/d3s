@@ -1,3 +1,4 @@
+import json
 from collections import defaultdict
 from pathlib import Path
 
@@ -21,14 +22,14 @@ class SalientImageNet(Dataset):
         crop_size=224,
     ):
         with open(
-            Path(__file__).parent.parent / "txt_data/imagenet_classes.txt", "r"
+            Path(__file__).parent.parent / "metadata/imagenet_classes.json", "r"
         ) as f:
-            self.classes = {int(k): v.split(",")[0] for k, v in eval(f.read()).items()}
+            self.classes = {int(k): v.split(",")[0] for k, v in json.load(f).items()}
 
         with open(
-            Path(__file__).parent.parent / "txt_data/imagenet_dictionary.txt", "r"
+            Path(__file__).parent.parent / "metadata/imagenet_dictionary.json", "r"
         ) as f:
-            self.dictionary = {int(k): v for k, v in eval(f.read()).items()}
+            self.dictionary = {int(k): v for k, v in json.load(f).items()}
 
         self._rng = np.random.default_rng()
 
