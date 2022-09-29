@@ -42,6 +42,11 @@ flags.register_validator(
     lambda value: FLAGS.dataset != "imagenet" or not value,
     "Cannot use mask with ImageNet",
 )
+flags.register_validator(
+    "save_init",
+    lambda value: FLAGS.use_foreground_image or FLAGS.use_background_image or not value,
+    "Cannot save init image without foreground image or background image",
+)
 
 rng = np.random.default_rng()
 
