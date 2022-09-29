@@ -1,5 +1,4 @@
 import json
-import logging
 from pathlib import Path
 
 import numpy as np
@@ -10,8 +9,6 @@ from tqdm import trange
 from d3s.datasets import CocoDetection, ImageNet, SalientImageNet
 from d3s.diffusion_generator import DiffusionGenerator
 from d3s.input_generator import InputGenerator
-
-logging.getLogger("seed").setLevel(logging.CRITICAL)
 
 FLAGS = flags.FLAGS
 
