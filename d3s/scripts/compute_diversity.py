@@ -30,7 +30,9 @@ def main(argv):
 
         distances[i] = lpips_distance.forward(img1, img2).item()
 
-    print(f"Diversity (LPIPS distance): {distances.mean():.4f} \u00B1 {distances.std():.4f}")
+    print(
+        f"Diversity (LPIPS distance): {distances.mean():.4f} \u00B1 {distances.std():.4f}"
+    )
 
 
 if __name__ == "__main__":
