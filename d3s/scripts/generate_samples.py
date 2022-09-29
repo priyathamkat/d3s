@@ -67,7 +67,7 @@ def main(argv):
     )
 
     outputs_folder = Path(FLAGS.output_folder)
-    outputs_folder.mkdir(exist_ok=True)
+    outputs_folder.mkdir(exist_ok=True, parents=True)
     FLAGS.append_flags_into_file(outputs_folder / "flags.txt")
 
     metadata = {}
