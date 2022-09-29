@@ -15,5 +15,6 @@ setup(
         "torchvision",
         "tqdm",
         "Pillow",
+        "lpips"
     ],
 )
