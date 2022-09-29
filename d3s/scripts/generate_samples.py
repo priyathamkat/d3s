@@ -25,7 +25,9 @@ flags.DEFINE_enum(
 flags.DEFINE_float("strength", 0.9, "Noise strength for diffusion model")
 flags.DEFINE_string("output_folder", None, "Output folder for generated images")
 flags.DEFINE_string("template_file", None, "File containing prompt template")
-flags.DEFINE_bool("use_init_image", True, "Use init image for initialization")
+flags.DEFINE_bool(
+    "use_foreground_image", True, "Use foreground image for initialization"
+)
 flags.DEFINE_bool(
     "use_background_image", True, "Use background image for initialization"
 )
@@ -34,14 +36,9 @@ flags.DEFINE_float("fg_scale", 0.4, "Scale of foreground image to background")
 flags.DEFINE_bool("save_init", False, "Save init_image along with generated image")
 
 flags.register_validator(
-    "use_background_image",
-    lambda value: FLAGS.use_init_image or not value,
-    "Cannot use background image without init image",
-)
-flags.register_validator(
     "use_mask",
-    lambda value: FLAGS.use_init_image or not value,
-    "Cannot use mask without init image",
+    lambda value: FLAGS.use_foreground_image or not value,
+    "Cannot use mask without foreground image",
 )
 flags.register_validator(
     "use_mask",
@@ -79,8 +76,9 @@ def main(argv):
     metadata = {}
 
     for i in trange(FLAGS.num_samples):
-        if FLAGS.use_init_image:
+        if FLAGS.use_foreground_image or FLAGS.use_background_image:
             prompt, init_image, args = input_generator.generate_input(
+                use_foreground_image=FLAGS.use_foreground_image,
                 use_background_image=FLAGS.use_background_image,
                 use_mask=FLAGS.use_mask,
                 fg_scale=FLAGS.fg_scale,
@@ -101,4 +99,5 @@ def main(argv):
 
 
 if __name__ == "__main__":
+    flags.mark_flags_as_required(["output_folder", "template_file"])
     app.run(main)
