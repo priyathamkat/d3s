@@ -127,6 +127,7 @@ class InputGenerator:
                         f"{type(self.dataset).__name__} does not have masks"
                     )
 
+        bg = None
         if use_background_image:
             try:
                 bg = kwargs["background"]
