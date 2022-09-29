@@ -8,7 +8,7 @@ from PIL import Image
 
 from d3s.datasets.coco import CocoDetection
 from d3s.datasets.salient_imagenet import SalientImageNet
-from d3s.utils import paste_on_bg
+from d3s.utils import crop_to_squarize, paste_on_bg, resize
 
 rng = np.random.default_rng()
 
@@ -141,8 +141,14 @@ class InputGenerator:
             bg = Image.open(bg)
 
         if fg is None:
+            # Resize background image to 512x512
+            bg = crop_to_squarize(bg)
+            bg = resize(bg, 512)
             return bg
         elif bg is None:
+            # Resize foreground image to 512x512
+            fg = crop_to_squarize(fg)
+            fg = resize(fg, 512)
             return fg
         else:
             if "fg_scale" not in kwargs:
