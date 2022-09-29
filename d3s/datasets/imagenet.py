@@ -12,10 +12,10 @@ class ImageNet(D.ImageNet):
     def __init__(self, split: str = "train", **kwargs: Any) -> None:
         super().__init__(IMAGENET_PATH, split, **kwargs)
 
-        with open(Path(__file__).parent.parent / "txt_data/imagenet_classes.json", "r") as f:
+        with open(Path(__file__).parent.parent / "metadata/imagenet_classes.json", "r") as f:
             self.classes = {int(k): v.split(",")[0] for k, v in json.load(f).items()}
 
-        with open(Path(__file__).parent.parent / "txt_data/imagenet_dictionary.json", "r") as f:
+        with open(Path(__file__).parent.parent / "metadata/imagenet_dictionary.json", "r") as f:
             self.dictionary = {int(k): v for k, v in json.load(f).items()}
 
         self.class_to_indices = defaultdict(list)
