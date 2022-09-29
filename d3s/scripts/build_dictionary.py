@@ -14,7 +14,7 @@ for class_idx in tqdm(imagenet_label_to_wordnet_synset):
     uri = uri.replace("wn30", "json/pwn30")
     r = requests.get(uri)
     data = json.loads(r.text)
-    dictionary[class_idx] = data[0]["definition"]
+    dictionary[str(class_idx)] = data[0]["definition"]
 
-with open(Path(__file__).parents[1] / "txt_data/imagenet_dictionary.txt", "w") as f:
+with open(Path(__file__).parents[1] / "txt_data/imagenet_dictionary.json", "w") as f:
     json.dump(dictionary, f)
