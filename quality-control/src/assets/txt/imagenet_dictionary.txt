@@ -1,0 +1,1 @@
+../../../../d3s/txt_data/imagenet_dictionary.txt
