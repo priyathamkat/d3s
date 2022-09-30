@@ -12,7 +12,9 @@ from d3s.input_generator import InputGenerator
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_bool("generate_from_any_class", False, "Generate each sample from any class randomly")
+flags.DEFINE_bool(
+    "generate_from_any_class", False, "Generate each sample from any class randomly"
+)
 flags.DEFINE_integer("num_classes", 10, "Number of classes to generate from")
 flags.DEFINE_integer("num_samples_per_class", 10, "Number of samples to generate")
 flags.DEFINE_enum(
@@ -80,7 +82,9 @@ def main(argv):
     metadata = {}
 
     num_samples = FLAGS.num_classes * FLAGS.num_samples_per_class
-    classes_to_generate = rng.choice(len(dataset.classes), size=FLAGS.num_classes, replace=False)
+    classes_to_generate = rng.choice(
+        len(dataset.classes), size=FLAGS.num_classes, replace=False
+    )
 
     with trange(num_samples) as pbar:
         for i in range(FLAGS.num_classes):
