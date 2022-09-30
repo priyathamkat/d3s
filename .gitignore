@@ -1,5 +1,6 @@
-# SLURM job scripts
+# SLURM job files
 job.sh
+*.out
 
 images/
 
