@@ -12,7 +12,9 @@ from d3s.input_generator import InputGenerator
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_integer("num_samples", 10, "Number of samples to generate")
+flags.DEFINE_bool("generate_from_any_class", False, "Generate each sample from any class randomly")
+flags.DEFINE_integer("num_classes", 10, "Number of classes to generate from")
+flags.DEFINE_integer("num_samples_per_class", 10, "Number of samples to generate")
 flags.DEFINE_enum(
     "dataset",
     "imagenet",
@@ -48,7 +50,7 @@ flags.register_validator(
     "Cannot save init image without foreground image or background image",
 )
 
-rng = np.random.default_rng()
+rng = np.random.default_rng(7245)
 
 
 def main(argv):
@@ -77,27 +79,38 @@ def main(argv):
 
     metadata = {}
 
-    for i in trange(FLAGS.num_samples):
-        if FLAGS.use_foreground_image or FLAGS.use_background_image:
-            prompt, init_image, args = input_generator.generate_input(
-                use_foreground_image=FLAGS.use_foreground_image,
-                use_background_image=FLAGS.use_background_image,
-                use_mask=FLAGS.use_mask,
-                fg_scale=FLAGS.fg_scale,
-            )
-            init_image = image_transform(init_image)
-            generated_image = diffusion.conditional_generate(
-                prompt, init_image, FLAGS.strength, return_init=FLAGS.save_init
-            )
-        else:
-            prompt, args = input_generator.generate_prompt()
-            generated_image = diffusion.unconditional_generate(prompt)
-        save_name = f"{i}.png"
-        generated_image.save(outputs_folder / save_name)
-        metadata[save_name] = {"prompt": prompt, "args": args}
+    num_samples = FLAGS.num_classes * FLAGS.num_samples_per_class
+    classes_to_generate = rng.choice(len(dataset.classes), size=FLAGS.num_classes, replace=False)
 
-    with open(outputs_folder / "metadata.txt", "w") as f:
-        json.dump(metadata, f)
+    with trange(num_samples) as pbar:
+        for i in range(FLAGS.num_classes):
+            for j in range(FLAGS.num_samples_per_class):
+                if FLAGS.generate_from_any_class:
+                    # a random class is chosen for each sample
+                    class_idx = rng.choice(len(dataset.classes))
+                else:
+                    class_idx = classes_to_generate[i]
+                if FLAGS.use_foreground_image or FLAGS.use_background_image:
+                    prompt, init_image, args = input_generator.generate_input(
+                        use_foreground_image=FLAGS.use_foreground_image,
+                        use_background_image=FLAGS.use_background_image,
+                        use_mask=FLAGS.use_mask,
+                        fg_scale=FLAGS.fg_scale,
+                        class_idx=class_idx,
+                    )
+                    init_image = image_transform(init_image)
+                    generated_image = diffusion.conditional_generate(
+                        prompt, init_image, FLAGS.strength, return_init=FLAGS.save_init
+                    )
+                else:
+                    prompt, args = input_generator.generate_prompt(class_idx=class_idx)
+                    generated_image = diffusion.unconditional_generate(prompt)
+                save_name = f"{i * FLAGS.num_classes + j}.png"
+                generated_image.save(outputs_folder / save_name)
+                metadata[save_name] = {"prompt": prompt, "args": args}
+                pbar.update(1)
+    with open(outputs_folder / "metadata.json", "w") as f:
+        json.dump(metadata, f, default=str)
 
 
 if __name__ == "__main__":
