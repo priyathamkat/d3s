@@ -41,7 +41,7 @@ def main(argv):
                 pbar.update(1)
 
     print(
-        f"Diversity (LPIPS distance): {distances.mean():.4f} \u00B1 {distances.std():.4f}"
+        f"Diversity (LPIPS distance) of {FLAGS.images_dir}: {distances.mean():.4f} \u00B1 {distances.std():.4f}"
     )
 
 
