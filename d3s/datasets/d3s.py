@@ -22,7 +22,7 @@ class D3S(Dataset):
         self.class_to_indices = defaultdict(list)
         for k, v in self.metadata.items():
             idx = int(k[: k.rfind(".")])
-            class_idx = v["args"]["class_idx"]
+            class_idx = int(v["args"]["class_idx"])
             self.class_to_indices[class_idx].append(idx)
             self.images[idx] = {
                 "image_path": self.root / k,
