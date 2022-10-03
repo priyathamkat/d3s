@@ -1,0 +1,34 @@
+#task-img {
+    width: 512px;
+    object-fit: cover;
+}
+
+#container {
+    display: flex;
+    flex-direction: row;
+    align-items: top;
+    margin: 100px;
+    gap: 25px;
+}
+
+#task-pane {
+    flex: 1;
+    border-right: 0.5px solid gray;
+}
+
+#task-pane > p {
+    margin: 10px;
+}
+
+Metadata {
+    padding-left: 20px;
+    flex: 1
+}
+
+#questions {
+    margin: 5px;
+}
+
+#questions > div {
+    padding: 5px;
+}

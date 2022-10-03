@@ -1,5 +1,6 @@
+import data from "../assets/json/imagenet_dictionary.json";
 import React from "react";
-import data from "../assets/json/imagenet_dictionary.json"
+import "./Definition.css";
 
 export default class Definition extends React.Component {
     constructor(props) {
@@ -9,8 +10,10 @@ export default class Definition extends React.Component {
     render() {
         return (
             <div>
-                <i>a shuttlecock</i>
-                <p>{this.dictionary[this.props.clsName]}</p>
+                <p>
+                    <strong>Definition: &nbsp;</strong>
+                    {this.dictionary[this.props.clsIdx]}
+                </p>
             </div>
         );
     }

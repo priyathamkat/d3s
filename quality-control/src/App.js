@@ -1,12 +1,10 @@
-import Definition from "./components/Definition";
+import Task from "./components/Task.js";
 import "./App.css";
 
 function App() {
     return (
         <div className="App">
-            <header className="App-header">
-                <Definition clsName="999"/>
-            </header>
+            <Task classIdx="283"/>
         </div>
     );
 }
