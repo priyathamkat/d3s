@@ -25,6 +25,11 @@ Metadata {
     flex: 1
 }
 
+.question {
+    display: flex;
+    flex-direction: row;
+}
+
 #questions {
     margin: 5px;
 }
