@@ -18,58 +18,64 @@ export default class Task extends React.Component {
                         <img
                             alt=""
                             id="task-img"
-                            src="http://t2.gstatic.com/licensed-image?q=tbn:ANd9GcTC39YgxvHt_pubidqvYY9aMgaE9AGn2_ek8ah76x1IIwH1t0h9TS8A2w_s6A2ITbc-pjqzN56fKHj6Bjw"
+                            src={this.props.imgSrc}
                         />
                         <div id="questions">
                             <div className="question">
                                 Is a {className} in the image?
                                 <Option
                                     type="radio"
-                                    value="1"
+                                    value="yes"
                                     name="foreground"
                                     id="radio-fg-yes"
                                     option="Yes"
+                                    onChange={this.props.onChange}
                                 />
                                 <Option
                                     type="radio"
-                                    value="0"
+                                    value="no"
                                     name="foreground"
                                     id="radio-fg-no"
                                     option="No"
+                                    onChange={this.props.onChange}
                                 />
                             </div>
                             <div className="question">
                                 Is the background in the image?
                                 <Option
                                     type="radio"
-                                    value="1"
+                                    value="yes"
                                     name="background"
                                     id="radio-bg-yes"
                                     option="Yes"
+                                    onChange={this.props.onChange}
                                 />
                                 <Option
                                     type="radio"
-                                    value="0"
+                                    value="no"
                                     name="background"
                                     id="radio-bg-no"
                                     option="No"
+                                    onChange={this.props.onChange}
                                 />
                             </div>
                             <div className="question">
                                 Is this an NSFW image?
                                 <Option
                                     type="radio"
-                                    value="1"
+                                    value="yes"
                                     name="nsfw"
                                     id="radio-nsfw-yes"
                                     option="Yes"
+                                    onChange={this.props.onChange}
                                 />
                                 <Option
                                     type="radio"
-                                    value="0"
+                                    value="no"
                                     name="nsfw"
                                     id="radio-nsfw-no"
                                     option="No"
+                                    onChange={this.props.onChange}
                                 />
                             </div>
                         </div>
