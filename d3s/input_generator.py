@@ -8,7 +8,7 @@ from PIL import Image
 
 from d3s.datasets.coco import CocoDetection
 from d3s.datasets.salient_imagenet import SalientImageNet
-from utils import paste_on_bg
+from d3s.utils import crop_to_squarize, paste_on_bg, resize
 
 rng = np.random.default_rng()
 
@@ -79,7 +79,11 @@ class InputGenerator:
         return self.prompt_template.substitute(substitutes), kwargs
 
     def generate_image(
-        self, use_background_image=False, use_mask=False, **kwargs
+        self,
+        use_foreground_image=False,
+        use_background_image=False,
+        use_mask=False,
+        **kwargs,
     ) -> Any:
         """
         Generate an `init_image` from the dataset.
@@ -91,30 +95,39 @@ class InputGenerator:
             background (str, optional): background to be used
         """
         # pick a random `class_idx` if not provided
-        try:
-            class_idx = kwargs["class_idx"]
-        except KeyError:
-            class_idx = rng.choice(len(self.dataset.classes))
-            kwargs["class_idx"] = class_idx
-        finally:
-            dataset_item = self.dataset.get_random(class_idx)
+        assert (
+            use_foreground_image or use_background_image
+        ), "At least one of foreground or background image should be used"
+        assert (
+            not use_mask or use_foreground_image
+        ), "Mask can only be used with foreground image"
 
-        if use_mask:
+        fg = None
+        mask = None
+        if use_foreground_image:
+            try:
+                class_idx = kwargs["class_idx"]
+            except KeyError:
+                class_idx = rng.choice(len(self.dataset.classes))
+                kwargs["class_idx"] = class_idx
+            finally:
+                dataset_item = self.dataset.get_random(class_idx)
+
             fg = dataset_item[0]
-            mask = None
-        else:
-            if isinstance(self.dataset, SalientImageNet):
-                fg, mask = dataset_item
-            elif (
-                isinstance(self.dataset, CocoDetection)
-                and self.dataset.catId is not None
-            ):
-                fg, _, mask = dataset_item
-            else:
-                # ImageNet does not have masks
-                fg = dataset_item[0]
-                mask = None
+            if use_mask:
+                if isinstance(self.dataset, SalientImageNet):
+                    fg, mask = dataset_item
+                elif (
+                    isinstance(self.dataset, CocoDetection)
+                    and self.dataset.catId is not None
+                ):
+                    fg, _, mask = dataset_item
+                else:
+                    raise ValueError(
+                        f"{type(self.dataset).__name__} does not have masks"
+                    )
 
+        bg = None
         if use_background_image:
             try:
                 bg = kwargs["background"]
@@ -127,12 +140,28 @@ class InputGenerator:
                         bg = rng.choice(list(background_folder.iterdir()))
                         break
             bg = Image.open(bg)
+
+        if fg is None:
+            # Resize background image to 512x512
+            bg = crop_to_squarize(bg)
+            bg = resize(bg, 512)
+            return bg
+        elif bg is None:
+            # Resize foreground image to 512x512
+            fg = crop_to_squarize(fg)
+            fg = resize(fg, 512)
+            return fg
+        else:
             if "fg_scale" not in kwargs:
                 kwargs["fg_scale"] = 0.4  # default `fg_scale`
             return paste_on_bg(fg, bg, mask=mask, fg_scale=kwargs["fg_scale"])
 
     def generate_input(
-        self, use_background_image=False, use_mask=False, **kwargs
+        self,
+        use_foreground_image=False,
+        use_background_image=False,
+        use_mask=False,
+        **kwargs,
     ) -> Any:
         """
         Generate a `prompt` and an `init_image` from the dataset.
@@ -157,7 +186,12 @@ class InputGenerator:
             kwargs["background"] = rng.choice(self.prompt_options["background"])
 
         prompt, args = self.generate_prompt(**kwargs)
-        init_image = self.generate_image(use_background_image, use_mask, **kwargs)
+        init_image = self.generate_image(
+            use_foreground_image=use_foreground_image,
+            use_background_image=use_background_image,
+            use_mask=use_mask,
+            **kwargs,
+        )
 
         return prompt, init_image, args
 

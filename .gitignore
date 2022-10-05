@@ -1,3 +1,7 @@
+# SLURM job files
+job.sh
+*.out
+
 images/
 
 # Byte-compiled / optimized / DLL files
