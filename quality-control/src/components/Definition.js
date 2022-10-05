@@ -10,10 +10,9 @@ export default class Definition extends React.Component {
     render() {
         return (
             <div>
-                <p>
-                    <strong>Definition: &nbsp;</strong>
-                    {this.dictionary[this.props.clsIdx]}
-                </p>
+                <h4>Definition</h4>
+                {this.dictionary[this.props.clsIdx]}
+                <hr />
             </div>
         );
     }

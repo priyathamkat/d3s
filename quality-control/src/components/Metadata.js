@@ -8,15 +8,15 @@ export default class Metadata extends React.Component {
             <div>
                 <div>
                     <div>
-                        <strong>
+                        <h1>
                             {this.props.className}
-                            <br />
-                        </strong>
+                            <hr />
+                        </h1>
                         <Definition clsIdx={this.props.classIdx} />
                     </div>
                 </div>
                 <div>
-                    <strong>Sample Images</strong>
+                    <h4>Sample Images</h4>
                 </div>
                 <div id="sample-images">
                     <img
