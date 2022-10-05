@@ -1,6 +1,9 @@
 #task-img {
-    width: 512px;
-    object-fit: cover;
+    max-width: 80vw;
+    max-height: 45vh;
+    margin: auto;
+    display: block;
+    padding-bottom: 4%;
 }
 
 #container {
@@ -36,4 +39,28 @@ Metadata {
 
 #questions > div {
     padding: 5px;
+}
+
+#footer {
+    display: flex;
+    align-items: center;
+}
+
+#progressBar {
+    flex-grow: 1;
+    height: 1px;
+}
+
+.nav-buttons {
+    justify-content: flex-end;
+    width: fit-content;
+    margin-left: 2vw;
+}
+
+#prev, #next {
+    flex-grow: 0;
+}
+
+.task {
+    padding: 2.5%;
 }
