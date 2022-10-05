@@ -3,6 +3,7 @@ job.sh
 *.out
 
 images/
+augmentation-study.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
