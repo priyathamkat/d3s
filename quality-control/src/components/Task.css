@@ -7,7 +7,7 @@
     display: flex;
     flex-direction: row;
     align-items: top;
-    margin: 100px;
+    padding: 100px;
     gap: 25px;
 }
 

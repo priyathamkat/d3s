@@ -7,13 +7,13 @@ export default class Metadata extends React.Component {
         return (
             <div>
                 <div>
-                    <p>
+                    <div>
                         <strong>
                             {this.props.className}
                             <br />
                         </strong>
                         <Definition clsIdx={this.props.classIdx} />
-                    </p>
+                    </div>
                 </div>
                 <div>
                     <strong>Sample Images</strong>

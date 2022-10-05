@@ -27,14 +27,14 @@ export default class Task extends React.Component {
                                 value="1"
                                 id="radio-fg-yes"
                             ></input>
-                            <label for="radio-fg-yes">Yes</label>
+                            <label htmlFor="radio-fg-yes">Yes</label>
                             <input
                                 type="radio"
                                 name="foreground"
                                 value="0"
                                 id="radio-fg-no"
                             ></input>
-                            <label for="radio-fg-no">No</label>
+                            <label htmlFor="radio-fg-no">No</label>
                         </div>
                         <div>
                             Is the background in the image?
@@ -44,14 +44,14 @@ export default class Task extends React.Component {
                                 value="1"
                                 id="radio-bg-yes"
                             ></input>
-                            <label for="radio-bg-yes">Yes</label>
+                            <label htmlFor="radio-bg-yes">Yes</label>
                             <input
                                 type="radio"
                                 name="background"
                                 value="0"
                                 id="radio-bg-no"
                             ></input>
-                            <label for="radio-bg-no">No</label>
+                            <label htmlFor="radio-bg-no">No</label>
                         </div>
                         <div>
                             Is this an NSFW image?
@@ -61,14 +61,14 @@ export default class Task extends React.Component {
                                 value="1"
                                 id="radio-nsfw-yes"
                             ></input>
-                            <label for="radio-nsfw-yes">Yes</label>
+                            <label htmlFor="radio-nsfw-yes">Yes</label>
                             <input
                                 type="radio"
                                 name="background"
                                 value="0"
                                 id="radio-nsfw-no"
                             ></input>
-                            <label for="radio-nsfw-no">No</label>
+                            <label htmlFor="radio-nsfw-no">No</label>
                         </div>
                     </div>
                 </div>
