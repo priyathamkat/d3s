@@ -8,10 +8,16 @@ import "./App.css";
 export default class App extends React.Component {
     constructor(props) {
         super(props);
-        let images;
-        images =
-            "https://upload.wikimedia.org/wikipedia/commons/1/15/White_Persian_Cat.jpg, https://upload.wikimedia.org/wikipedia/commons/1/15/White_Persian_Cat.jpg, https://upload.wikimedia.org/wikipedia/commons/1/15/White_Persian_Cat.jpg";
-        this.images = images.split(", ");
+        let data;
+        if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
+            data =
+                '[{"image": "https://upload.wikimedia.org/wikipedia/commons/1/15/White_Persian_Cat.jpg", "classIdx":"283"}, {"image": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Toiletpapier_%28Gobran111%29.jpg/1280px-Toiletpapier_%28Gobran111%29.jpg", "classIdx":"999"}]';
+        } else {
+            data = document.getElementById("images").value;
+        }
+        data = JSON.parse(data);
+        this.images = data.map((x) => x.image);
+        this.classIdxs = data.map((x) => x.classIdx);
         let state = {
             idx: 0,
             nextDisabled: true,
@@ -66,7 +72,7 @@ export default class App extends React.Component {
             });
         }
     }
-    
+
     handleInstructions = (e) => {
         if (this.state.showInstructions) {
             this.setState({
@@ -78,7 +84,7 @@ export default class App extends React.Component {
             });
         }
     };
-    
+
     updateIdxBy(change) {
         const newIdx = Math.min(
             Math.max(this.state.idx + change, 0),
@@ -91,7 +97,7 @@ export default class App extends React.Component {
             visited: newVisited,
         });
     }
-    
+
     onPrev = () => {
         this.updateIdxBy(-1);
     };
@@ -101,7 +107,7 @@ export default class App extends React.Component {
             this.updateIdxBy(1);
         }
     };
-    
+
     changeAttribute = (e) => {
         const image = this.images[this.state.idx];
         let numChecked = this.state.numChecked;
@@ -137,7 +143,7 @@ export default class App extends React.Component {
             numChecked: numChecked,
         });
     };
-    
+
     render() {
         const progress = Math.ceil(
             (100 * this.state.visited.size) / this.images.length
@@ -151,7 +157,7 @@ export default class App extends React.Component {
             componentToRender = (
                 <div>
                     <Task
-                        classIdx="283"
+                        classIdx={this.classIdxs[this.state.idx]}
                         imgSrc={this.images[this.state.idx]}
                         onChange={this.changeAttribute}
                         progress={progress}
