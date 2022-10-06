@@ -24,6 +24,7 @@ export default class App extends React.Component {
         }
         this.state = state;
     }
+
     createNewAttributes() {
         let newAttributes = {
             foreground: undefined,
@@ -32,6 +33,7 @@ export default class App extends React.Component {
         };
         return newAttributes;
     }
+
     componentDidMount() {
         document.querySelector("crowd-form").onsubmit = () => {
             let annotations = {};
@@ -42,6 +44,7 @@ export default class App extends React.Component {
                 JSON.stringify(annotations);
         };
     }
+
     componentDidUpdate() {
         const attributes = this.state[this.images[this.state.idx]];
         for (let key in attributes) {
@@ -63,6 +66,7 @@ export default class App extends React.Component {
             });
         }
     }
+    
     handleInstructions = (e) => {
         if (this.state.showInstructions) {
             this.setState({
@@ -74,6 +78,7 @@ export default class App extends React.Component {
             });
         }
     };
+    
     updateIdxBy(change) {
         const newIdx = Math.min(
             Math.max(this.state.idx + change, 0),
@@ -86,6 +91,7 @@ export default class App extends React.Component {
             visited: newVisited,
         });
     }
+    
     onPrev = () => {
         this.updateIdxBy(-1);
     };
@@ -95,6 +101,7 @@ export default class App extends React.Component {
             this.updateIdxBy(1);
         }
     };
+    
     changeAttribute = (e) => {
         const image = this.images[this.state.idx];
         let numChecked = this.state.numChecked;
@@ -130,6 +137,7 @@ export default class App extends React.Component {
             numChecked: numChecked,
         });
     };
+    
     render() {
         const progress = Math.ceil(
             (100 * this.state.visited.size) / this.images.length

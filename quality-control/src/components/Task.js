@@ -9,6 +9,7 @@ export default class Task extends React.Component {
         super(props);
         this.classes = data;
     }
+    
     render() {
         const className = this.classes[this.props.classIdx];
         return (

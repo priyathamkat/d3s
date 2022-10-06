@@ -7,6 +7,7 @@ export default class Definition extends React.Component {
         super(props);
         this.dictionary = data;
     }
+    
     render() {
         return (
             <div>
