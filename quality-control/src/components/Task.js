@@ -9,9 +9,36 @@ export default class Task extends React.Component {
         super(props);
         this.classes = data;
     }
-    
+
     render() {
-        const className = this.classes[this.props.classIdx];
+        const clsName = this.classes[this.props.classIdx];
+        let backgroundQuestion;
+        if (this.props.background) {
+            backgroundQuestion = (
+                <div className="question">
+                    Is the background a{" "}
+                    <em>&nbsp; {this.props.background} &nbsp;</em>?
+                    <Option
+                        type="radio"
+                        value="yes"
+                        name="background"
+                        id="radio-bg-yes"
+                        option="Yes"
+                        onChange={this.props.onChange}
+                    />
+                    <Option
+                        type="radio"
+                        value="no"
+                        name="background"
+                        id="radio-bg-no"
+                        option="No"
+                        onChange={this.props.onChange}
+                    />
+                </div>
+            );
+        } else {
+            backgroundQuestion = null;
+        }
         return (
             <div className="task">
                 <div id="container">
@@ -19,7 +46,8 @@ export default class Task extends React.Component {
                         <img alt="" id="task-img" src={this.props.imgSrc} />
                         <div id="questions">
                             <div className="question">
-                                Is a <em>&nbsp; {className} &nbsp;</em> in the image?
+                                Is a <em>&nbsp; {clsName} &nbsp;</em> in the
+                                image?
                                 <Option
                                     type="radio"
                                     value="yes"
@@ -37,25 +65,7 @@ export default class Task extends React.Component {
                                     onChange={this.props.onChange}
                                 />
                             </div>
-                            <div className="question">
-                                Is the background in the image?
-                                <Option
-                                    type="radio"
-                                    value="yes"
-                                    name="background"
-                                    id="radio-bg-yes"
-                                    option="Yes"
-                                    onChange={this.props.onChange}
-                                />
-                                <Option
-                                    type="radio"
-                                    value="no"
-                                    name="background"
-                                    id="radio-bg-no"
-                                    option="No"
-                                    onChange={this.props.onChange}
-                                />
-                            </div>
+                            {backgroundQuestion}
                             <div className="question">
                                 Is this an NSFW image?
                                 <Option
@@ -78,7 +88,7 @@ export default class Task extends React.Component {
                         </div>
                     </div>
                     <Metadata
-                        className={className}
+                        className={clsName}
                         classIdx={this.props.classIdx}
                     />
                 </div>

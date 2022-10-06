@@ -11,13 +11,14 @@ export default class App extends React.Component {
         let data;
         if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
             data =
-                '[{"image": "https://upload.wikimedia.org/wikipedia/commons/1/15/White_Persian_Cat.jpg", "classIdx":"283"}, {"image": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Toiletpapier_%28Gobran111%29.jpg/1280px-Toiletpapier_%28Gobran111%29.jpg", "classIdx":"999"}]';
+                '[{"image": "https://upload.wikimedia.org/wikipedia/commons/1/15/White_Persian_Cat.jpg", "classIdx":"283", "background":"indoors"}, {"image": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Toiletpapier_%28Gobran111%29.jpg/1280px-Toiletpapier_%28Gobran111%29.jpg", "classIdx":"999"}]';
         } else {
             data = document.getElementById("images").value;
         }
         data = JSON.parse(data);
         this.images = data.map((x) => x.image);
         this.classIdxs = data.map((x) => x.classIdx);
+        this.backgrounds = data.map((x) => x.background);
         let state = {
             idx: 0,
             nextDisabled: true,
@@ -159,6 +160,7 @@ export default class App extends React.Component {
                     <Task
                         classIdx={this.classIdxs[this.state.idx]}
                         imgSrc={this.images[this.state.idx]}
+                        background={this.backgrounds[this.state.idx]}
                         onChange={this.changeAttribute}
                         progress={progress}
                         prevDisabled={this.state.idx === 0}
