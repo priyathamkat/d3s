@@ -24,6 +24,7 @@ export default class Task extends React.Component {
                         name="background"
                         id="radio-bg-yes"
                         option="Yes"
+                        checked={this.props.attributes.background === "Yes"}
                         onChange={this.props.onChange}
                     />
                     <Option
@@ -32,6 +33,7 @@ export default class Task extends React.Component {
                         name="background"
                         id="radio-bg-no"
                         option="No"
+                        checked={this.props.attributes.background === "No"}
                         onChange={this.props.onChange}
                     />
                 </div>
@@ -54,6 +56,10 @@ export default class Task extends React.Component {
                                     name="foreground"
                                     id="radio-fg-yes"
                                     option="Yes"
+                                    checked={
+                                        this.props.attributes.foreground ===
+                                        "Yes"
+                                    }
                                     onChange={this.props.onChange}
                                 />
                                 <Option
@@ -62,6 +68,10 @@ export default class Task extends React.Component {
                                     name="foreground"
                                     id="radio-fg-no"
                                     option="No"
+                                    checked={
+                                        this.props.attributes.foreground ===
+                                        "No"
+                                    }
                                     onChange={this.props.onChange}
                                 />
                             </div>
@@ -74,6 +84,9 @@ export default class Task extends React.Component {
                                     name="nsfw"
                                     id="radio-nsfw-yes"
                                     option="Yes"
+                                    checked={
+                                        this.props.attributes.nsfw === "Yes"
+                                    }
                                     onChange={this.props.onChange}
                                 />
                                 <Option
@@ -82,6 +95,9 @@ export default class Task extends React.Component {
                                     name="nsfw"
                                     id="radio-nsfw-no"
                                     option="No"
+                                    checked={
+                                        this.props.attributes.nsfw === "No"
+                                    }
                                     onChange={this.props.onChange}
                                 />
                             </div>

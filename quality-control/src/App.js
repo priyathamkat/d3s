@@ -143,12 +143,14 @@ export default class App extends React.Component {
             [image]: newAttributes,
             numChecked: numChecked,
         });
+        console.log(newAttributes);
     };
 
     render() {
         const progress = Math.ceil(
             (100 * this.state.visited.size) / this.images.length
         ).toString();
+        const attributes = this.state[this.images[this.state.idx]];
         let componentToRender;
         let textOnInstructions;
         if (this.state.showInstructions) {
@@ -167,6 +169,7 @@ export default class App extends React.Component {
                         nextDisabled={this.state.nextDisabled}
                         onPrev={this.onPrev}
                         onNext={this.onNext}
+                        attributes = {attributes}
                     />
                     {progress === "100" && <Submit />}
                 </div>
