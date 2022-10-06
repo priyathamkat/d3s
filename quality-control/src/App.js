@@ -23,21 +23,22 @@ export default class App extends React.Component {
             idx: 0,
             nextDisabled: true,
             showInstructions: false,
-            numChecked: 0,
-            visited: new Set([0]),
+            visited: new Set(),
         };
         for (let i = 0; i < this.images.length; i++) {
-            state[this.images[i]] = this.createNewAttributes();
+            state[this.images[i]] = this.createNewAttributes(i);
         }
         this.state = state;
     }
 
-    createNewAttributes() {
+    createNewAttributes(idx) {
         let newAttributes = {
-            foreground: undefined,
-            background: undefined,
-            nsfw: undefined,
+            foreground: "",
+            nsfw: "",
         };
+        if (this.backgrounds[idx] !== undefined) {
+            newAttributes["background"] = "";
+        }
         return newAttributes;
     }
 
@@ -55,7 +56,7 @@ export default class App extends React.Component {
     componentDidUpdate() {
         const attributes = this.state[this.images[this.state.idx]];
         for (let key in attributes) {
-            if (attributes[key] === undefined) {
+            if (attributes[key] === "") {
                 if (!this.state.nextDisabled) {
                     this.setState({
                         nextDisabled: true,
@@ -91,11 +92,8 @@ export default class App extends React.Component {
             Math.max(this.state.idx + change, 0),
             this.images.length - 1
         );
-        const newVisited = new Set(this.state.visited);
-        newVisited.add(newIdx);
         this.setState({
             idx: newIdx,
-            visited: newVisited,
         });
     }
 
@@ -111,16 +109,9 @@ export default class App extends React.Component {
 
     changeAttribute = (e) => {
         const image = this.images[this.state.idx];
-        let numChecked = this.state.numChecked;
-        let newAttributes = this.createNewAttributes();
+        let visited = this.state.visited;
+        let newAttributes = this.createNewAttributes(this.state.idx);
         const newOption = e.target.value;
-
-        let prevAnnotated = 0;
-        for (let attribute in this.state[image]) {
-            if (this.state[image][attribute] !== undefined) {
-                prevAnnotated++;
-            }
-        }
 
         for (let attribute in this.state[image]) {
             if (attribute === e.target.name) {
@@ -130,18 +121,17 @@ export default class App extends React.Component {
             }
         }
 
-        let nowAnnotated = 0;
+        let allAnnotated = true;
         for (let attribute in this.state[image]) {
-            if (this.state[image][attribute] !== undefined) {
-                nowAnnotated++;
-            }
+            allAnnotated = allAnnotated && newAttributes[attribute] !== "";
         }
 
-        numChecked += nowAnnotated - prevAnnotated;
+        if (allAnnotated) {
+            visited.add(this.state.idx);
+        }
 
         this.setState({
             [image]: newAttributes,
-            numChecked: numChecked,
         });
     };
 
