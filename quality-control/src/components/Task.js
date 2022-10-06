@@ -19,7 +19,7 @@ export default class Task extends React.Component {
                         <img alt="" id="task-img" src={this.props.imgSrc} />
                         <div id="questions">
                             <div className="question">
-                                Is a {className} in the image?
+                                Is a <em>&nbsp; {className} &nbsp;</em> in the image?
                                 <Option
                                     type="radio"
                                     value="yes"
