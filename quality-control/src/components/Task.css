@@ -25,7 +25,7 @@
 
 Metadata {
     padding-left: 20px;
-    flex: 1
+    flex: 1;
 }
 
 .question {
@@ -57,7 +57,8 @@ Metadata {
     margin-left: 2vw;
 }
 
-#prev, #next {
+#prev,
+#next {
     flex-grow: 0;
 }
 

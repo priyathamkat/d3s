@@ -38,8 +38,9 @@ export default class App extends React.Component {
             for (let i = 0; i < this.images.length; i++) {
                 annotations[this.images[i]] = this.state[this.images[i]];
             }
-            document.getElementById("annotations").value = JSON.stringify(annotations);
-        }
+            document.getElementById("annotations").value =
+                JSON.stringify(annotations);
+        };
     }
     componentDidUpdate() {
         const attributes = this.state[this.images[this.state.idx]];

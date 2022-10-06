@@ -15,11 +15,7 @@ export default class Task extends React.Component {
             <div className="task">
                 <div id="container">
                     <div id="task-pane">
-                        <img
-                            alt=""
-                            id="task-img"
-                            src={this.props.imgSrc}
-                        />
+                        <img alt="" id="task-img" src={this.props.imgSrc} />
                         <div id="questions">
                             <div className="question">
                                 Is a {className} in the image?
