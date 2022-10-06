@@ -17,7 +17,7 @@ export default class Task extends React.Component {
             backgroundQuestion = (
                 <div className="question">
                     Is the background
-                    <em>&nbsp; {this.props.background}</em>?
+                    <em>&nbsp;{this.props.background}</em>?
                     <Option
                         type="radio"
                         value="yes"
@@ -48,7 +48,7 @@ export default class Task extends React.Component {
                         <img alt="" id="task-img" src={this.props.imgSrc} />
                         <div id="questions">
                             <div className="question">
-                                Is a <em>&nbsp; {clsName} &nbsp;</em> in the
+                                Is a <em>&nbsp;{clsName}&nbsp;</em> in the
                                 image?
                                 <Option
                                     type="radio"
@@ -103,10 +103,12 @@ export default class Task extends React.Component {
                             </div>
                         </div>
                     </div>
-                    <Metadata
-                        className={clsName}
-                        classIdx={this.props.classIdx}
-                    />
+                    <div id="metadata">
+                        <Metadata
+                            clsName={clsName}
+                            classIdx={this.props.classIdx}
+                        />
+                    </div>
                 </div>
                 <div id="footer">
                     <div className="progress" id="progressBar">
