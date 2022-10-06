@@ -19,6 +19,7 @@ export default class App extends React.Component {
         this.images = inputData.map((x) => x.image);
         this.classIdxs = inputData.map((x) => x.classIdx);
         this.backgrounds = inputData.map((x) => x.background);
+        this.hasInits = inputData.map((x) => x.hasInit);
         let state = {
             idx: 0,
             nextDisabled: true,
@@ -38,6 +39,9 @@ export default class App extends React.Component {
         };
         if (this.backgrounds[idx] !== undefined) {
             newAttributes["background"] = "";
+        }
+        if (this.hasInits[idx] !== undefined) {
+            newAttributes["init"] = "";
         }
         return newAttributes;
     }
@@ -152,6 +156,7 @@ export default class App extends React.Component {
                         classIdx={this.classIdxs[this.state.idx]}
                         imgSrc={this.images[this.state.idx]}
                         background={this.backgrounds[this.state.idx]}
+                        hasInit={this.hasInits[this.state.idx]}
                         onChange={this.changeAttribute}
                         progress={progress}
                         prevDisabled={this.state.idx === 0}
