@@ -13,7 +13,9 @@ export default class Submit extends React.Component {
     }
 
     handleSubmit() {
-        document.querySelector("crowd-form").submit();
+        if (process.env.NODE_ENV === "production") {
+            document.querySelector("crowd-form").submit();
+        }
         if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
             this.downloadFile(document.getElementById("annotations").value);
         }

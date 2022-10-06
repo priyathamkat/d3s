@@ -47,14 +47,16 @@ export default class App extends React.Component {
     }
 
     componentDidMount() {
-        document.querySelector("crowd-form").onsubmit = () => {
-            let annotations = {};
-            for (let i = 0; i < this.images.length; i++) {
-                annotations[this.images[i]] = this.state[this.images[i]];
-            }
-            document.getElementById("annotations").value =
-                JSON.stringify(annotations);
-        };
+        if (process.env.NODE_ENV === "production") {
+            document.querySelector("crowd-form").onsubmit = () => {
+                let annotations = {};
+                for (let i = 0; i < this.images.length; i++) {
+                    annotations[this.images[i]] = this.state[this.images[i]];
+                }
+                document.getElementById("annotations").value =
+                    JSON.stringify(annotations);
+            };
+        }
     }
 
     componentDidUpdate() {

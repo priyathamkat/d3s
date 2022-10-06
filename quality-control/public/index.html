@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="Quality Control for Diffusion Generated Images"
-    />
-    <!--
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#000000" />
+        <meta
+            name="description"
+            content="Quality Control for Diffusion Generated Images"
+        />
+        <!--
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
     -->
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
+        <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+        <!--
       Notice the use of %PUBLIC_URL% in the tags above.
       It will be replaced with the URL of the `public` folder during the build.
       Only files inside the `public` folder can be referenced from the HTML.
@@ -22,20 +22,37 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <script src="https://assets.crowd.aws/crowd-html-elements.js" defer></script>
-    <title>D3S QC</title>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <crowd-form>
-      <input name="annotations" id="annotations" type="hidden">
+        <% if (process.env.NODE_ENV === "production") { %>
+        <script
+            src="https://assets.crowd.aws/crowd-html-elements.js"
+            defer
+        ></script>
+        <% } %>
+        <title>D3S QC</title>
+    </head>
+    <body>
+        <noscript>You need to enable JavaScript to run this app.</noscript>
+        <% if (process.env.NODE_ENV === "production") { %>
+        <crowd-form>
+            <input name="annotations" id="annotations" type="hidden" />
 
-      <!-- Prevent crowd-form from creating its own button -->
-      <crowd-button form-action="submit" style="display: none;"></crowd-button>
-    </crowd-form>
-    <input name="inputData" id="inputData" type="hidden" value="${inputData}">
-    <div id="root"></div>
-    <!--
+            <!-- Prevent crowd-form from creating its own button -->
+            <crowd-button
+                form-action="submit"
+                style="display: none"
+            ></crowd-button>
+        </crowd-form>
+        <input
+            name="inputData"
+            id="inputData"
+            type="hidden"
+            value="${inputData}"
+        />
+        <% } else { %> 
+          <input name="annotations" id="annotations" type="hidden" />
+        <% } %>
+        <div id="root"></div>
+        <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.
 
@@ -44,6 +61,5 @@
 
       To begin the development, run `npm start` or `yarn start`.
       To create a production bundle, use `npm run build` or `yarn build`.
-    -->
-  </body>
+    --></body>
 </html>
