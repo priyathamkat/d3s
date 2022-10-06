@@ -1,5 +1,6 @@
-import React from "react";
 import Instructions from "./components/Instructions.js";
+import React from "react";
+import Submit from "./components/Submit.js";
 import Task from "./components/Task.js";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
@@ -31,17 +32,15 @@ export default class App extends React.Component {
         };
         return newAttributes;
     }
-    handleInstructions = (e) => {
-        if (this.state.showInstructions) {
-            this.setState({
-                showInstructions: false,
-            });
-        } else {
-            this.setState({
-                showInstructions: true,
-            });
+    componentDidMount() {
+        document.querySelector("crowd-form").onsubmit = () => {
+            let annotations = {};
+            for (let i = 0; i < this.images.length; i++) {
+                annotations[this.images[i]] = this.state[this.images[i]];
+            }
+            document.getElementById("annotations").value = JSON.stringify(annotations);
         }
-    };
+    }
     componentDidUpdate() {
         const attributes = this.state[this.images[this.state.idx]];
         for (let key in attributes) {
@@ -54,12 +53,26 @@ export default class App extends React.Component {
                 return;
             }
         }
-        if (this.state.nextDisabled && this.state.idx !== this.images.length - 1) {
+        if (
+            this.state.nextDisabled &&
+            this.state.idx !== this.images.length - 1
+        ) {
             this.setState({
                 nextDisabled: false,
             });
         }
     }
+    handleInstructions = (e) => {
+        if (this.state.showInstructions) {
+            this.setState({
+                showInstructions: false,
+            });
+        } else {
+            this.setState({
+                showInstructions: true,
+            });
+        }
+    };
     updateIdxBy(change) {
         const newIdx = Math.min(
             Math.max(this.state.idx + change, 0),
@@ -86,7 +99,7 @@ export default class App extends React.Component {
         let numChecked = this.state.numChecked;
         let newAttributes = this.createNewAttributes();
         const newOption = e.target.value;
-        
+
         let prevAnnotated = 0;
         for (let attribute in this.state[image]) {
             if (this.state[image][attribute] !== undefined) {
@@ -109,8 +122,8 @@ export default class App extends React.Component {
             }
         }
 
-        numChecked += (nowAnnotated - prevAnnotated);
-        
+        numChecked += nowAnnotated - prevAnnotated;
+
         this.setState({
             [image]: newAttributes,
             numChecked: numChecked,
@@ -127,16 +140,19 @@ export default class App extends React.Component {
             textOnInstructions = "Hide Instructions";
         } else {
             componentToRender = (
-                <Task
-                    classIdx="283"
-                    imgSrc={this.images[this.state.idx]}
-                    onChange={this.changeAttribute}
-                    progress={progress}
-                    prevDisabled={this.state.idx === 0}
-                    nextDisabled={this.state.nextDisabled}
-                    onPrev={this.onPrev}
-                    onNext={this.onNext}
-                />
+                <div>
+                    <Task
+                        classIdx="283"
+                        imgSrc={this.images[this.state.idx]}
+                        onChange={this.changeAttribute}
+                        progress={progress}
+                        prevDisabled={this.state.idx === 0}
+                        nextDisabled={this.state.nextDisabled}
+                        onPrev={this.onPrev}
+                        onNext={this.onNext}
+                    />
+                    {progress === "100" && <Submit />}
+                </div>
             );
             textOnInstructions = "Show Instructions";
         }
