@@ -2,6 +2,7 @@
 job.sh
 *.out
 
+inputData.json
 images/
 
 # Byte-compiled / optimized / DLL files

@@ -1,3 +1,4 @@
+import data from "./assets/input/inputData.json";
 import Instructions from "./components/Instructions.js";
 import React from "react";
 import Submit from "./components/Submit.js";
@@ -8,17 +9,16 @@ import "./App.css";
 export default class App extends React.Component {
     constructor(props) {
         super(props);
-        let data;
+        let inputData;
         if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
-            data =
-                '[{"image": "https://upload.wikimedia.org/wikipedia/commons/1/15/White_Persian_Cat.jpg", "classIdx":"283", "background":"indoors"}, {"image": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Toiletpapier_%28Gobran111%29.jpg/1280px-Toiletpapier_%28Gobran111%29.jpg", "classIdx":"999"}]';
+            inputData = data;
         } else {
-            data = document.getElementById("inputData").value;
+            inputData = document.getElementById("inputData").value;
+            inputData = JSON.parse(inputData);
         }
-        data = JSON.parse(data);
-        this.images = data.map((x) => x.image);
-        this.classIdxs = data.map((x) => x.classIdx);
-        this.backgrounds = data.map((x) => x.background);
+        this.images = inputData.map((x) => x.image);
+        this.classIdxs = inputData.map((x) => x.classIdx);
+        this.backgrounds = inputData.map((x) => x.background);
         let state = {
             idx: 0,
             nextDisabled: true,
