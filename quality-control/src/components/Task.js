@@ -16,8 +16,8 @@ export default class Task extends React.Component {
         if (this.props.background) {
             backgroundQuestion = (
                 <div className="question">
-                    Is the background a{" "}
-                    <em>&nbsp; {this.props.background} &nbsp;</em>?
+                    Is the background
+                    <em>&nbsp; {this.props.background}</em>?
                     <Option
                         type="radio"
                         value="yes"
