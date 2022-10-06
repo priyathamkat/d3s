@@ -13,7 +13,7 @@ export default class App extends React.Component {
             data =
                 '[{"image": "https://upload.wikimedia.org/wikipedia/commons/1/15/White_Persian_Cat.jpg", "classIdx":"283", "background":"indoors"}, {"image": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Toiletpapier_%28Gobran111%29.jpg/1280px-Toiletpapier_%28Gobran111%29.jpg", "classIdx":"999"}]';
         } else {
-            data = document.getElementById("images").value;
+            data = document.getElementById("inputData").value;
         }
         data = JSON.parse(data);
         this.images = data.map((x) => x.image);
@@ -143,7 +143,6 @@ export default class App extends React.Component {
             [image]: newAttributes,
             numChecked: numChecked,
         });
-        console.log(newAttributes);
     };
 
     render() {
@@ -169,7 +168,7 @@ export default class App extends React.Component {
                         nextDisabled={this.state.nextDisabled}
                         onPrev={this.onPrev}
                         onNext={this.onNext}
-                        attributes = {attributes}
+                        attributes={attributes}
                     />
                     {progress === "100" && <Submit />}
                 </div>
