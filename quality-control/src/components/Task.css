@@ -10,12 +10,12 @@
     display: flex;
     flex-direction: row;
     align-items: top;
-    padding: 50px;
+    padding-bottom: 25px;
     gap: 25px;
 }
 
 #task-pane {
-    flex: 1;
+    flex: 2;
     border-right: 0.5px solid gray;
 }
 
@@ -23,9 +23,9 @@
     margin: 10px;
 }
 
-Metadata {
+#metadata {
     padding-left: 20px;
-    flex: 1
+    flex: 1;
 }
 
 .question {
@@ -35,6 +35,7 @@ Metadata {
 
 #questions {
     margin: 5px;
+    padding-left: 100px;
 }
 
 #questions > div {
@@ -57,7 +58,8 @@ Metadata {
     margin-left: 2vw;
 }
 
-#prev, #next {
+#prev,
+#next {
     flex-grow: 0;
 }
 

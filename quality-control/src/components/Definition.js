@@ -7,12 +7,11 @@ export default class Definition extends React.Component {
         super(props);
         this.dictionary = data;
     }
+
     render() {
         return (
             <div>
-                <h4>Definition</h4>
-                {this.dictionary[this.props.clsIdx]}
-                <hr />
+                <em>{this.dictionary[this.props.clsIdx]}</em>
             </div>
         );
     }

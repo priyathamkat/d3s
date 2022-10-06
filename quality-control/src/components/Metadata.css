@@ -5,3 +5,7 @@
     grid-auto-rows: minmax(100px, auto);
     margin-top: 10px;
 }
+
+#sample-images > img {
+    max-height: 150px;
+}
