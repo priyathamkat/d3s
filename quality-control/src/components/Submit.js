@@ -25,7 +25,7 @@ export default class Submit extends React.Component {
                 <button
                     className="btn btn-primary btn-lg"
                     type="submit"
-                    onClick={this.handleSubmit}
+                    onClick={() => this.handleSubmit()}
                 >
                     Submit
                 </button>
