@@ -105,7 +105,7 @@ def main(argv):
     outputs_folder.mkdir(exist_ok=True, parents=True)
     FLAGS.append_flags_into_file(outputs_folder / "flags.txt")
 
-    metadata = {}
+    metadata = []
 
     num_samples = FLAGS.num_classes * FLAGS.num_samples_per_class
     classes_to_generate = rng.choice(
@@ -139,9 +139,22 @@ def main(argv):
                     init_image = image_transform(init_image)
                 else:
                     prompt, args = input_generator.generate_prompt(class_idx=class_idx)
-                save_name = f"{i * FLAGS.num_classes + j}.png"
-                queue.put((prompt, init_image, outputs_folder / save_name))
-                metadata[save_name] = {"prompt": prompt, "args": args}
+                save_name = str(outputs_folder / f"{i * FLAGS.num_classes + j}.png")
+                queue.put((prompt, init_image, save_name))
+                
+                metadatum = {
+                    "image": save_name,
+                    "classIdx": class_idx,
+                    "prompt": prompt,
+                    "args": args,
+                }
+                metadatum["hasInit"] = FLAGS.save_init
+                try:
+                    metadatum["background"] = args["background"].split(" ")[-1]
+                except KeyError:
+                    pass
+                metadata.append(metadatum)
+                
                 pbar.update(1)
 
     for _ in range(FLAGS.num_gpus):
