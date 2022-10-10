@@ -2,13 +2,14 @@ import json
 from pathlib import Path
 
 import numpy as np
+import torch
+import torch.multiprocessing as mp
 from absl import app, flags
-from torchvision import transforms as T
-from tqdm import trange
-
 from d3s.datasets import CocoDetection, ImageNet, SalientImageNet
 from d3s.diffusion_generator import DiffusionGenerator
 from d3s.input_generator import InputGenerator
+from torchvision import transforms as T
+from tqdm import trange
 
 FLAGS = flags.FLAGS
 
@@ -35,6 +36,7 @@ flags.DEFINE_bool(
 flags.DEFINE_bool("use_mask", False, "Use masked images for initialization")
 flags.DEFINE_float("fg_scale", 0.4, "Scale of foreground image to background")
 flags.DEFINE_bool("save_init", False, "Save init_image along with generated image")
+flags.DEFINE_integer("num_gpus", 1, "Number of GPUs to use")
 
 flags.register_validator(
     "use_mask",
@@ -55,6 +57,32 @@ flags.register_validator(
 rng = np.random.default_rng(7245)
 
 
+def generate(rank, queue):
+    device = torch.device(f"cuda:{rank}")
+    diffusion = DiffusionGenerator(device=device)
+
+    while True:
+        prompt, init_image, save_path = queue.get()
+
+        if prompt is not None:
+            if init_image is not None:
+                generated_image = diffusion.conditional_generate(
+                    prompt, init_image, FLAGS.strength, return_init=FLAGS.save_init
+                )
+            else:
+                generated_image = diffusion.unconditional_generate(prompt)
+        else:
+            if init_image is not None:
+                generated_image = diffusion.conditional_generate(
+                    "", init_image, FLAGS.strength, return_init=FLAGS.save_init
+                )
+            else:
+                break  # encountered sentinel values
+
+        generated_image.save(save_path)
+        del prompt, init_image, save_path
+
+
 def main(argv):
     if FLAGS.dataset == "imagenet":
         dataset = ImageNet()
@@ -64,8 +92,6 @@ def main(argv):
         dataset = CocoDetection()
 
     input_generator = InputGenerator(dataset, FLAGS.template_file)
-
-    diffusion = DiffusionGenerator()
 
     image_transform = T.Compose(
         [
@@ -86,6 +112,13 @@ def main(argv):
         len(dataset.classes), size=FLAGS.num_classes, replace=False
     )
 
+    queue = mp.Queue(maxsize=3 * FLAGS.num_gpus)
+    processes = []
+    for rank in range(FLAGS.num_gpus):
+        p = mp.Process(target=generate, args=(rank, queue))
+        p.start()
+        processes.append(p)
+
     with trange(num_samples) as pbar:
         for i in range(FLAGS.num_classes):
             for j in range(FLAGS.num_samples_per_class):
@@ -94,6 +127,7 @@ def main(argv):
                     class_idx = rng.choice(len(dataset.classes))
                 else:
                     class_idx = classes_to_generate[i]
+                init_image = None
                 if FLAGS.use_foreground_image or FLAGS.use_background_image:
                     prompt, init_image, args = input_generator.generate_input(
                         use_foreground_image=FLAGS.use_foreground_image,
@@ -103,16 +137,19 @@ def main(argv):
                         class_idx=class_idx,
                     )
                     init_image = image_transform(init_image)
-                    generated_image = diffusion.conditional_generate(
-                        prompt, init_image, FLAGS.strength, return_init=FLAGS.save_init
-                    )
                 else:
                     prompt, args = input_generator.generate_prompt(class_idx=class_idx)
-                    generated_image = diffusion.unconditional_generate(prompt)
                 save_name = f"{i * FLAGS.num_classes + j}.png"
-                generated_image.save(outputs_folder / save_name)
+                queue.put((prompt, init_image, outputs_folder / save_name))
                 metadata[save_name] = {"prompt": prompt, "args": args}
                 pbar.update(1)
+
+    for _ in range(FLAGS.num_gpus):
+        queue.put((None, None, None))  # sentinel values to signal subprocesses to exit
+
+    for p in processes:
+        p.join()  # wait for all subprocesses to finish
+
     with open(outputs_folder / "metadata.json", "w") as f:
         json.dump(metadata, f, default=str)
 
