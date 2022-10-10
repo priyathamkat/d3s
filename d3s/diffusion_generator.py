@@ -35,15 +35,22 @@ def load_model_from_config(config, ckpt, verbose=False):
 
 
 class DiffusionGenerator:
-    def __init__(self, seed=42, config_path=CONFIG_PATH, ckpt_path=CKPT_PATH):
+    def __init__(
+        self, seed=42, device=None, config_path=CONFIG_PATH, ckpt_path=CKPT_PATH
+    ):
         seed_everything(seed)
 
         config = OmegaConf.load(config_path)
         model = load_model_from_config(config, ckpt_path)
 
-        self.device = (
-            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        )
+        if device is None:
+            self.device = (
+                torch.device("cuda")
+                if torch.cuda.is_available()
+                else torch.device("cpu")
+            )
+        else:
+            self.device = device
         self.model = model.to(self.device)
 
         self.sampler = DDIMSampler(self.model)
