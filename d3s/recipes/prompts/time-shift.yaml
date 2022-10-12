@@ -1,5 +1,5 @@
 ---
 shift_name: time-shift
 template:
-    - an old color photo of a ${class_name}, ${definition}, from ${time-past}
-    - a futuristic color photo of a ${class_name}, ${definition}, from ${time-future}
+    - an old color photo of a ${class_name}, ${definition}, from the ${time-past}s
+    - a futuristic color photo of a ${class_name}, ${definition}, from the ${time-future}s
