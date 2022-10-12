@@ -1,0 +1,4 @@
+---
+shift_name: background-shift
+template:
+    - a photo of a ${class_name}, ${definition}, ${background}

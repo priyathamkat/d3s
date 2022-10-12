@@ -10,9 +10,22 @@
       - in rain
       - at night
       - in a cave
-- domain:
-      - photo
-      - low poly render
-      - sculpture
 - geography:
+      - Chile
       - India
+      - Russia
+      - Brazil
+      - Japan
+      - China
+      - Egypt
+      - Saudi Arabia
+      - Ethiopia
+      - Nigeria
+- time-past:
+      - 1800
+      - 1900
+      - 1950
+      - 1990
+- time-future:
+      - 2050
+      - 2200

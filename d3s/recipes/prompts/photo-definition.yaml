@@ -1,2 +1,4 @@
 ---
-template: a photo of a ${class_name}, ${definition}
+shift_name: diffusion_pd
+template:
+    - a photo of a ${class_name}, ${definition}
