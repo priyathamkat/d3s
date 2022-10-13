@@ -119,9 +119,7 @@ class InputGenerator:
             try:
                 choices[identifier] = kwargs[identifier]
             except KeyError:
-                choices[identifier] = rng.choice(
-                    self.identifier_options[identifier]
-                )
+                choices[identifier] = rng.choice(self.identifier_options[identifier])
                 kwargs[identifier] = choices[identifier]
         return prompt_template.substitute(choices), choices
 
