@@ -58,9 +58,13 @@ flags.register_validator(
 rng = np.random.default_rng(7245)
 
 
-def generate(rank, queue):
+def generate(rank, queue, lock):
     device = torch.device(f"cuda:{rank}")
-    diffusion = DiffusionGenerator(device=device)
+    lock.acquire()
+    try:
+        diffusion = DiffusionGenerator(device=device)
+    finally:
+        lock.release()
 
     while True:
         text_prompt, init_image, save_path = queue.get()
@@ -122,9 +126,10 @@ def main(argv):
     )
 
     queue = mp.Queue(maxsize=3 * FLAGS.num_gpus)
+    lock = mp.Lock()
     processes = []
-    for rank in range(FLAGS.num_gpus):
-        p = mp.Process(target=generate, args=(rank, queue))
+    for rank in reversed(range(FLAGS.num_gpus)):
+        p = mp.Process(target=generate, args=(rank, queue, lock))
         p.start()
         processes.append(p)
 
