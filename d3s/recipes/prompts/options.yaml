@@ -21,11 +21,11 @@
       - Saudi Arabia
       - Ethiopia
       - Nigeria
-- time-past:
+- time_past:
       - 1800
       - 1900
       - 1950
       - 1990
-- time-future:
+- time_future:
       - 2050
       - 2200
