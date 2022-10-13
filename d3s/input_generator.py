@@ -78,7 +78,10 @@ class InputGenerator:
 
         # load all options for each identifier
         with open(Path(__file__).parent / "recipes/prompts/options.yaml", "r") as f:
-            self.prompt_options = yaml.load(f, Loader=yaml.CLoader)[0]
+            options = yaml.load(f, Loader=yaml.CLoader)
+            self.identifier_options = {}
+            for prompt_option in options:
+                self.identifier_options.update(prompt_option)
 
         # load all background folders
         self.background_folders = list(
@@ -99,26 +102,28 @@ class InputGenerator:
         """
         prompt_template = rng.choice(self.prompt_templates)
         prompt_identifiers = self.prompt_identifiers[prompt_template]
-        substitutes = {}
+        choices = {}
         # pick a random `class_idx` if not provided
         try:
             class_idx = kwargs["class_idx"]
         except KeyError:
             class_idx = rng.choice(len(self.dataset.classes))
-            kwargs["class_idx"] = class_idx
         finally:
             class_name = self.dataset.classes[class_idx]
-            substitutes["class_name"] = class_name
+            choices["class_idx"] = class_idx
+            choices["class_name"] = class_name
             if "definition" in prompt_identifiers:
-                substitutes["definition"] = self.dataset.dictionary[class_idx]
+                choices["definition"] = self.dataset.dictionary[class_idx]
 
         for identifier in prompt_identifiers - {"class_name", "definition"}:
             try:
-                substitutes[identifier] = kwargs[identifier]
+                choices[identifier] = kwargs[identifier]
             except KeyError:
-                substitutes[identifier] = rng.choice(self.prompt_options[identifier])
-                kwargs[identifier] = substitutes[identifier]
-        return prompt_template.substitute(substitutes), kwargs
+                choices[identifier] = rng.choice(
+                    self.identifier_options[identifier]
+                )
+                kwargs[identifier] = choices[identifier]
+        return prompt_template.substitute(choices), choices
 
     def generate_image(
         self,
@@ -146,13 +151,14 @@ class InputGenerator:
 
         fg_image = None
         mask = None
+        choices = {}
         if use_foreground_image:
             try:
                 class_idx = kwargs["class_idx"]
             except KeyError:
                 class_idx = rng.choice(len(self.dataset.classes))
-                kwargs["class_idx"] = class_idx
             finally:
+                choices["class_idx"] = class_idx
                 dataset_item = self.dataset.get_random(class_idx)
 
             fg_image = dataset_item[0]
@@ -174,26 +180,28 @@ class InputGenerator:
             try:
                 background = kwargs["background"]
             except KeyError:
-                background = rng.choice(self.prompt_options["background"])
-                kwargs["background"] = background
+                background = rng.choice(self.identifier_options["background"])
             finally:
+                choices["background"] = background
                 for background_folder in self.background_folders:
                     if background_folder.name in background:
                         background_path = rng.choice(list(background_folder.iterdir()))
                         break
             bg_image = Image.open(background_path)
 
-        if "fg_scale" not in kwargs:
-            kwargs["fg_scale"] = 0.4  # default `fg_scale`
+        try:
+            choices["fg_scale"] = kwargs["fg_scale"]
+        except KeyError:
+            choices["fg_scale"] = 0.4  # default `fg_scale`
 
         return (
             ImageInput(
                 fg_image=fg_image,
                 bg_image=bg_image,
                 mask=mask,
-                fg_scale=kwargs["fg_scale"],
+                fg_scale=choices["fg_scale"],
             ),
-            kwargs,
+            choices,
         )
 
     def generate_input(
@@ -223,7 +231,7 @@ class InputGenerator:
 
         # pick a random `background` if not provided
         if use_background_image and "background" not in kwargs:
-            kwargs["background"] = rng.choice(self.prompt_options["background"])
+            kwargs["background"] = rng.choice(self.identifier_options["background"])
 
         text_prompt, prompt_args = self.generate_prompt(**kwargs)
         image_input, image_args = self.generate_image(
@@ -241,12 +249,11 @@ if __name__ == "__main__":
 
     input_generator = InputGenerator(
         ImageNet(),
-        Path(__file__).parent / "recipes/prompts/background-shift.yaml",
+        Path(__file__).parent / "recipes/prompts/time-shift.yaml",
     )
     text_prompt, image_input, _ = input_generator.generate_input(
         class_idx=100,
         use_foreground_image=True,
-        use_background_image=True,
         use_mask=False,
     )
     print(text_prompt)
