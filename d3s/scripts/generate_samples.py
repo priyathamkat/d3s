@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -26,7 +27,7 @@ flags.DEFINE_enum(
 )
 flags.DEFINE_float("strength", 0.9, "Noise strength for diffusion model")
 flags.DEFINE_string("output_folder", None, "Output folder for generated images")
-flags.DEFINE_string("template_file", None, "File containing prompt template")
+flags.DEFINE_list("template_files", None, "List of prompt template files")
 flags.DEFINE_bool(
     "use_foreground_image", True, "Use foreground image for initialization"
 )
@@ -62,25 +63,26 @@ def generate(rank, queue):
     diffusion = DiffusionGenerator(device=device)
 
     while True:
-        prompt, init_image, save_path = queue.get()
+        text_prompt, init_image, save_path = queue.get()
 
-        if prompt is not None:
-            if init_image is not None:
+        if init_image is not None:
+            init_image = init_image.to(device)
+            if text_prompt is not None:
                 generated_image = diffusion.conditional_generate(
-                    prompt, init_image, FLAGS.strength, return_init=FLAGS.save_init
+                    text_prompt, init_image, FLAGS.strength, return_init=FLAGS.save_init
                 )
             else:
-                generated_image = diffusion.unconditional_generate(prompt)
-        else:
-            if init_image is not None:
                 generated_image = diffusion.conditional_generate(
                     "", init_image, FLAGS.strength, return_init=FLAGS.save_init
                 )
+        else:
+            if text_prompt is not None:
+                generated_image = diffusion.unconditional_generate(text_prompt)
             else:
                 break  # encountered sentinel values
 
         generated_image.save(save_path)
-        del prompt, init_image, save_path
+        del text_prompt, init_image, save_path
 
 
 def main(argv):
@@ -91,7 +93,9 @@ def main(argv):
     else:
         dataset = CocoDetection()
 
-    input_generator = InputGenerator(dataset, FLAGS.template_file)
+    input_generators = [
+        InputGenerator(dataset, template_file) for template_file in FLAGS.template_files
+    ]
 
     image_transform = T.Compose(
         [
@@ -101,9 +105,14 @@ def main(argv):
         ]
     )
 
-    outputs_folder = Path(FLAGS.output_folder)
-    outputs_folder.mkdir(exist_ok=True, parents=True)
-    FLAGS.append_flags_into_file(outputs_folder / "flags.txt")
+    output_folder = Path(FLAGS.output_folder)
+    shift_folders = [
+        output_folder / f"{input_generator.shift_name}"
+        for input_generator in input_generators
+    ]
+    for shift_folder in shift_folders:
+        shift_folder.mkdir(exist_ok=True, parents=True)
+    FLAGS.append_flags_into_file(output_folder / "flags.txt")
 
     metadata = []
 
@@ -127,34 +136,58 @@ def main(argv):
                     class_idx = rng.choice(len(dataset.classes))
                 else:
                     class_idx = classes_to_generate[i]
-                init_image = None
-                if FLAGS.use_foreground_image or FLAGS.use_background_image:
-                    prompt, init_image, args = input_generator.generate_input(
-                        use_foreground_image=FLAGS.use_foreground_image,
-                        use_background_image=FLAGS.use_background_image,
-                        use_mask=FLAGS.use_mask,
-                        fg_scale=FLAGS.fg_scale,
-                        class_idx=class_idx,
-                    )
-                    init_image = image_transform(init_image)
-                else:
-                    prompt, args = input_generator.generate_prompt(class_idx=class_idx)
-                save_name = str(outputs_folder / f"{i * FLAGS.num_classes + j}.png")
-                queue.put((prompt, init_image, save_name))
-                
-                metadatum = {
-                    "image": save_name,
-                    "classIdx": class_idx,
-                    "prompt": prompt,
-                    "args": args,
-                }
-                metadatum["hasInit"] = FLAGS.save_init
-                try:
-                    metadatum["background"] = args["background"].split(" ")[-1]
-                except KeyError:
-                    pass
-                metadata.append(metadatum)
-                
+
+                image_input = None
+                image_args = {}
+
+                for input_generator, shift_folder in zip(
+                    input_generators, shift_folders
+                ):
+                    if image_input is None and (
+                        FLAGS.use_foreground_image or FLAGS.use_background_image
+                    ):
+                        image_input, image_args = input_generator.generate_image(
+                            use_foreground_image=FLAGS.use_foreground_image,
+                            use_background_image=FLAGS.use_background_image,
+                            use_mask=FLAGS.use_mask,
+                            fg_scale=FLAGS.fg_scale,
+                            class_idx=class_idx,
+                        )
+                    if image_args:
+                        text_prompt, prompt_args = input_generator.generate_prompt(
+                            **image_args,
+                        )
+                    else:
+                        text_prompt, prompt_args = input_generator.generate_prompt(
+                            class_idx=class_idx
+                        )
+
+                    init_image = None
+                    if image_input is not None:
+                        if "background" in prompt_args:
+                            init_image = image_transform(image_input.init_image)
+                        else:
+                            init_image = image_transform(
+                                replace(image_input, bg_image=None).init_image
+                            )
+
+                    args = {**image_args, **prompt_args}
+                    save_name = str(shift_folder / f"{i * FLAGS.num_classes + j}.png")
+                    queue.put((text_prompt, init_image, save_name))
+
+                    metadatum = {
+                        "image": save_name,
+                        "classIdx": class_idx,
+                        "prompt": text_prompt,
+                        "args": args,
+                    }
+                    metadatum["hasInit"] = FLAGS.save_init
+                    try:
+                        metadatum["background"] = args["background"].split(" ")[-1]
+                    except KeyError:
+                        pass
+                    metadata.append(metadatum)
+
                 pbar.update(1)
 
     for _ in range(FLAGS.num_gpus):
@@ -163,10 +196,10 @@ def main(argv):
     for p in processes:
         p.join()  # wait for all subprocesses to finish
 
-    with open(outputs_folder / "metadata.json", "w") as f:
+    with open(output_folder / "metadata.json", "w") as f:
         json.dump(metadata, f, default=str)
 
 
 if __name__ == "__main__":
-    flags.mark_flags_as_required(["output_folder", "template_file"])
+    flags.mark_flags_as_required(["output_folder", "template_files"])
     app.run(main)
