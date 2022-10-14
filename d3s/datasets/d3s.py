@@ -26,7 +26,8 @@ class D3S(Dataset):
 
         self.images = {}
         self.class_to_indices = defaultdict(list)
-        for idx, metadatum in enumerate(self.metadata):
+        idx = 0
+        for metadatum in self.metadata:
             image_path = metadatum["image"]
             if shift != "all" and shift not in image_path:
                 continue
@@ -36,6 +37,7 @@ class D3S(Dataset):
                 "image_path": image_path,
                 "class_idx": class_idx,
             }
+            idx += 1
 
     def __getitem__(self, idx: Any) -> Any:
         image = self.images[idx]["image_path"]
