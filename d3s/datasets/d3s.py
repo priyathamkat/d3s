@@ -43,7 +43,7 @@ class D3S(Dataset):
 
         if not self.return_init:
             image = image.crop((518, 2, 518 + 512, 2 + 512))
-        label = self.images[idx]["class_idx"]
+        label = int(self.images[idx]["class_idx"])
 
         if self.transform is not None:
             image = self.transform(image)
