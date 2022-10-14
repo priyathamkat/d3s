@@ -15,6 +15,10 @@ class D3S(Dataset):
     ) -> None:
         super().__init__()
         self.root = Path(root)
+        
+        with open(Path(__file__).parent.parent / "metadata/imagenet_classes.json", "r") as f:
+            self.classes = {int(k): v.split(",")[0] for k, v in json.load(f).items()}
+        
         with open(self.root / "metadata.json", "r") as f:
             self.metadata = json.load(f)
 
