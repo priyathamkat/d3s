@@ -11,12 +11,14 @@ class D3S(Dataset):
     shifts = ["all", "background-shift", "geography-shift", "time-shift"]
 
     def __init__(
-        self, root: Union[str, Path], shift="all", transform=None, target_transform=None
+        self, root: Union[str, Path], shift="all", return_init=False, transform=None, target_transform=None
     ) -> None:
         super().__init__()
         self.root = Path(root)
         with open(self.root / "metadata.json", "r") as f:
             self.metadata = json.load(f)
+
+        self.return_init = return_init
         self.transform = transform
         self.target_transform = target_transform
 
@@ -39,6 +41,8 @@ class D3S(Dataset):
         image = self.images[idx]["image_path"]
         image = Image.open(image)
 
+        if not self.return_init:
+            image = image.crop((518, 2, 518 + 512, 2 + 512))
         label = self.images[idx]["class_idx"]
 
         if self.transform is not None:
@@ -55,4 +59,5 @@ class D3S(Dataset):
 if __name__ == "__main__":
     dataset = D3S("/cmlscratch/pkattaki/datasets/d3s/", shift="background-shift")
     print(dataset.images[0])
+    print(dataset[0][0].size)
     print(len(dataset))
