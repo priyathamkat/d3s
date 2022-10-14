@@ -8,8 +8,10 @@ from torch.utils.data import Dataset
 
 
 class D3S(Dataset):
+    shifts = ["all", "background-shift", "geography-shift", "time-shift"]
+
     def __init__(
-        self, root: Union[str, Path], transform=None, target_transform=None
+        self, root: Union[str, Path], shift="all", transform=None, target_transform=None
     ) -> None:
         super().__init__()
         self.root = Path(root)
@@ -18,14 +20,18 @@ class D3S(Dataset):
         self.transform = transform
         self.target_transform = target_transform
 
+        assert shift in self.shifts, f"shift must be one of {self.shifts}"
+
         self.images = {}
         self.class_to_indices = defaultdict(list)
-        for k, v in self.metadata.items():
-            idx = int(k[: k.rfind(".")])
-            class_idx = int(v["args"]["class_idx"])
+        for idx, metadatum in enumerate(self.metadata):
+            image_path = metadatum["image"]
+            if shift != "all" and shift not in image_path:
+                continue
+            class_idx = metadatum["classIdx"]
             self.class_to_indices[class_idx].append(idx)
             self.images[idx] = {
-                "image_path": self.root / k,
+                "image_path": image_path,
                 "class_idx": class_idx,
             }
 
@@ -43,9 +49,10 @@ class D3S(Dataset):
         return image, label
 
     def __len__(self) -> int:
-        return len(self.metadata)
+        return len(self.images)
 
 
 if __name__ == "__main__":
-    dataset = D3S("/cmlscratch/pkattaki/datasets/d3s/pd")
-    print(dataset.class_to_indices)
+    dataset = D3S("/cmlscratch/pkattaki/datasets/d3s/", shift="background-shift")
+    print(dataset.images[0])
+    print(len(dataset))
