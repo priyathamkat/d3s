@@ -38,6 +38,7 @@ flags.DEFINE_bool("use_mask", False, "Use masked images for initialization")
 flags.DEFINE_float("fg_scale", 0.4, "Scale of foreground image to background")
 flags.DEFINE_bool("save_init", False, "Save init_image along with generated image")
 flags.DEFINE_integer("num_gpus", 1, "Number of GPUs to use")
+flags.DEFINE_integer("seed", 8432, "Base seed for diffusion model")
 
 flags.register_validator(
     "use_mask",
@@ -62,7 +63,7 @@ def generate(rank, queue, lock):
     device = torch.device(f"cuda:{rank}")
     lock.acquire()
     try:
-        diffusion = DiffusionGenerator(device=device)
+        diffusion = DiffusionGenerator(seed=rank + FLAGS.seed, device=device)
     finally:
         lock.release()
 
