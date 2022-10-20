@@ -28,16 +28,21 @@ flags.DEFINE_bool(
     True,
     "Whether to include the class names in the output image.",
 )
+flags.DEFINE_bool(
+    "return_init",
+    True,
+    "Whether to return the initial image along with the generated image.",
+)
 
 
 def main(argv):
     rng = np.random.default_rng(0)
-    dataset = D3S(Path(FLAGS.d3s_root), return_init=True, shift=FLAGS.shift)
+    dataset = D3S(Path(FLAGS.d3s_root), return_init=FLAGS.return_init, shift=FLAGS.shift)
     assert FLAGS.num_images <= len(
         dataset
     ), "Too few images in the dataset."
 
-    font = ImageFont.truetype(str(Path(__file__).parent.parent / "assets/Roboto-Black.ttf"), 40)
+    font = ImageFont.truetype(str(Path(__file__).parent.parent / "assets/Roboto-Black.ttf"), 30)
 
     images = []
     for _ in trange(FLAGS.num_images):
