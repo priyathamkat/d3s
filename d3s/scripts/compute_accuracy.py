@@ -29,7 +29,8 @@ flags.DEFINE_integer("batch_size", 128, "Batch size for evaluating the model")
 def main(argv):
     transform = T.Compose(
         [
-            T.Resize(224),
+            T.Resize(256),
+            T.CenterCrop(224),
             T.ToTensor(),
             T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ]
