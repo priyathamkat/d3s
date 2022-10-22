@@ -35,28 +35,51 @@ flags.DEFINE_string(
 )
 
 
+class FeatureModel(nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+        self.fc = self.model.fc
+        self.model.fc = nn.Identity()
+
+    def forward(self, x):
+        features = self.model(x)
+        outputs = self.fc(features)
+        return outputs, features
+
+    def compress(self):
+        output = deepcopy(self.model)
+        output.fc = self.fc
+        return output
+
+
 class Trainer:
     def __init__(self, model, t, alphas) -> None:
         self.model = model
         self.ce_criterion = nn.CrossEntropyLoss()
         self.rince_criterion = RankedInfoNCE(t=t)
         self.optimizer = optim.SGD(
-            self.model.parameters(), lr=FLAGS.lr, momentum=FLAGS.momentum, nesterov=True
+            self.model.parameters(),
+            lr=FLAGS.lr,
+            momentum=FLAGS.momentum,
+            weight_decay=FLAGS.weight_decay,
         )
         self.alphas = alphas
 
     def train(self, batch):
         self.model.train()
         self.optimizer.zero_grad()
-        outputs = self.model(batch["imagenet_images"])
+        outputs, _ = self.model(batch["imagenet_images"])
         loss = self.ce_criterion(outputs, batch["imagenet_labels"])
         for quadruplet in batch["d3s_images"]:
-            query = self.model(quadruplet["query"])
-            same_class = self.model(quadruplet["same_class"])
-            same_bg = self.model(quadruplet["same_bg"])
-            negatives = self.model(quadruplet["negatives"])
+            _, query = self.model(quadruplet["query"])
+            _, same_class = self.model(quadruplet["same_class"])
+            _, same_bg = self.model(quadruplet["same_bg"])
+            _, negatives = self.model(quadruplet["negatives"])
             results = torch.stack([negatives, same_bg, same_class], dim=1)
-            loss += self.rince_criterion(query, results, self.alphas)
+            loss += self.rince_criterion(query, results, self.alphas) / len(
+                batch["d3s_images"]
+            )
         loss.backward()
         self.optimizer.step()
         return loss.item()
@@ -69,7 +92,7 @@ def test(model, dataloader, desc):
     for batch in tqdm(dataloader, desc=desc, leave=False, file=sys.stdout):
         images, labels = batch[:2]
         images, labels = images.cuda(), labels.cuda()
-        outputs = model(images)
+        outputs, _ = model(images)
         _, top5_indices = outputs.topk(5, dim=1)
         top1_indices = top5_indices[:, 0]
         top5 += (top5_indices == labels.unsqueeze(1)).sum().item()
@@ -79,7 +102,7 @@ def test(model, dataloader, desc):
 
 
 def main(argv):
-    model = models.resnet50(pretrained=True)
+    model = FeatureModel(models.resnet50(pretrained=True))
     model.cuda()
 
     normalize = T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -135,7 +158,7 @@ def main(argv):
     log_folder = Path(FLAGS.log_folder) / now
     log_folder.mkdir()
     FLAGS.append_flags_into_file(log_folder / "flags.txt")
-    
+
     writer = SummaryWriter(log_dir=log_folder)
 
     for i in trange(1, FLAGS.num_iters + 1):
@@ -200,7 +223,7 @@ def main(argv):
             writer.add_scalar("d3s/top5", top5, i)
             torch.save(
                 {
-                    "model": model.state_dict(),
+                    "model": model.compress().state_dict(),
                     "optimizer": trainer.optimizer.state_dict(),
                 },
                 log_folder / f"ckpt-{i}.pth",
