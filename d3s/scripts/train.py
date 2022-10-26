@@ -142,7 +142,7 @@ def main(argv):
         train_imagenet,
         batch_size=FLAGS.train_batch_size,
         shuffle=True,
-        num_workers=4,
+        num_workers=FLAGS.num_workers,
         pin_memory=True,
     )
     train_imagenet_iter = iter(train_imagenet_dataloader)
@@ -150,14 +150,14 @@ def main(argv):
         val_imagenet,
         batch_size=FLAGS.val_batch_size,
         shuffle=False,
-        num_workers=4,
+        num_workers=FLAGS.num_workers,
         pin_memory=True,
     )
     val_d3s_dataloader = DataLoader(
         val_d3s,
         batch_size=FLAGS.val_batch_size,
         shuffle=False,
-        num_workers=4,
+        num_workers=FLAGS.num_workers,
         pin_memory=True,
     )
 
