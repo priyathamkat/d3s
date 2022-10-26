@@ -4,12 +4,13 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import torchvision.models as models
 import torchvision.transforms as T
 from absl import app, flags
-from d3s.datasets import D3S, ImageNet
 from d3s.contrastive_loss import ContrastiveLoss
+from d3s.datasets import D3S, ImageNet
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm, trange
@@ -21,6 +22,7 @@ flags.DEFINE_string(
     "/cmlscratch/pkattaki/datasets/d3s",
     "Path to D3S root directory. This should contain metadata.json",
 )
+flags.DEFINE_bool("only_disentangle", True, "Only train disentanglement layer")
 flags.DEFINE_integer("num_iters", 100000, "Number of iterations to train for")
 flags.DEFINE_integer("num_workers", 4, "Number of workers to use for data loading")
 flags.DEFINE_integer("train_batch_size", 4, "Batch size for training")
@@ -36,45 +38,95 @@ flags.DEFINE_string(
 )
 
 
+class InvertibleLinear(nn.Module):
+    def __init__(self, num_features, bias=True):
+        super().__init__()
+        w_init = torch.linalg.qr(torch.randn(num_features, num_features))[0]
+        p, lower, upper = torch.linalg.lu(w_init)
+        s = torch.diag(upper)
+        sign_s = torch.sign(s)
+        log_s = torch.log(torch.abs(s))
+        upper = torch.triu(upper, diagonal=1)
+        l_mask = torch.tril(torch.ones_like(w_init), diagonal=-1)
+        eye = torch.eye(num_features)
+
+        self.register_buffer("p", p)
+        self.register_buffer("sign_s", sign_s)
+        self.lower = nn.Parameter(lower)
+        self.log_s = nn.Parameter(log_s)
+        self.upper = nn.Parameter(upper)
+        self.register_buffer("l_mask", l_mask)
+        self.register_buffer("eye", eye)
+
+        self.bias = nn.Parameter(torch.zeros(num_features)) if bias else None
+
+        self.num_features = num_features
+
+    def forward(self, x):
+        lower = self.lower * self.l_mask + self.eye
+        upper = self.upper * self.l_mask.t().contiguous()
+        upper = upper + torch.diag(self.sign_s * torch.exp(self.log_s))
+        weight = self.p @ lower @ upper
+        features = F.linear(x, weight, self.bias)
+        return (
+            features[:, : self.num_features // 2],
+            features[:, self.num_features // 2 :],
+        )
+
+
 class FeatureModel(nn.Module):
     def __init__(self, model):
         super().__init__()
         self.model = model
         self.fc = self.model.fc
-        self.fg_features = nn.Linear(self.fc.in_features, self.fc.in_features // 2)
-        self.bg_features = nn.Linear(self.fc.in_features, self.fc.in_features // 2)
+        self.disentangle = InvertibleLinear(self.fc.in_features)
         self.model.fc = nn.Identity()
 
     def forward(self, x):
         features = self.model(x)
-        fg_features = self.fg_features(features)
-        bg_features = self.bg_features(features)
-        disentangled_features = torch.cat([fg_features, bg_features], dim=1)
-        outputs = self.fc(disentangled_features)
+        fg_features, bg_features = self.disentangle(features)
+        outputs = self.fc(features)
         return outputs, fg_features, bg_features
 
 
 class Trainer:
-    def __init__(self, model, t, alpha) -> None:
+    def __init__(self, model, t, alpha, only_disentangle=True) -> None:
         self.model = model
         self.ce_criterion = nn.CrossEntropyLoss()
         self.contrasive_criterion = ContrastiveLoss(t=t)
-        self.optimizer = optim.SGD(
-            self.model.parameters(),
-            lr=FLAGS.lr,
-            momentum=FLAGS.momentum,
-            weight_decay=FLAGS.weight_decay,
-        )
+        self.only_disentangle = only_disentangle
+        if self.only_disentangle:
+            self.optimizer = optim.SGD(
+                self.model.disentangle.parameters(),
+                lr=FLAGS.lr,
+                momentum=FLAGS.momentum,
+                weight_decay=FLAGS.weight_decay,
+            )
+            for name, parameter in self.model.named_parameters():
+                if "disentangle" not in name:
+                    parameter.requires_grad = False
+        else:
+            self.optimizer = optim.SGD(
+                self.model.parameters(),
+                lr=FLAGS.lr,
+                momentum=FLAGS.momentum,
+                weight_decay=FLAGS.weight_decay,
+            )
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer, patience=100, threshold=1e-3, cooldown=50, min_lr=1e-4
         )
         self.alpha = alpha
 
     def train(self, batch):
-        self.model.train()
+        if self.only_disentangle:
+            self.model.eval()
+        else:
+            self.model.train()
         self.optimizer.zero_grad()
-        outputs, _, _ = self.model(batch["imagenet_images"])
-        ce_loss = self.ce_criterion(outputs, batch["imagenet_labels"])
+        ce_loss = None
+        if not self.only_disentangle:
+            outputs, _, _ = self.model(batch["imagenet_images"])
+            ce_loss = self.ce_criterion(outputs, batch["imagenet_labels"])
         contrastive_loss = 0
         for quadruplet in batch["d3s_images"]:
             _, query_fg, query_bg = self.model(quadruplet["query"])
@@ -88,11 +140,17 @@ class Trainer:
                 query_bg, same_bg_bg, negatives_bg
             )
         contrastive_loss /= len(batch["d3s_images"])
-        total_loss = contrastive_loss + self.alpha * ce_loss
+        if self.only_disentangle:
+            total_loss = contrastive_loss
+        else:
+            total_loss = contrastive_loss + self.alpha * ce_loss
         total_loss.backward()
         self.optimizer.step()
         self.scheduler.step(total_loss)
-        return total_loss.item(), ce_loss.item(), contrastive_loss.item()
+        if self.only_disentangle:
+            return total_loss.item()
+        else:
+            return total_loss.item(), ce_loss.item(), contrastive_loss.item()
 
 
 @torch.no_grad()
@@ -112,7 +170,7 @@ def test(model, dataloader, desc):
 
 
 def main(argv):
-    model = FeatureModel(models.resnet50(pretrained=True))
+    model = FeatureModel(models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2))
     model.cuda()
 
     normalize = T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -123,7 +181,8 @@ def main(argv):
         [T.Resize(256), T.CenterCrop(224), T.ToTensor(), normalize]
     )
 
-    train_imagenet = ImageNet(split="train", transform=train_transform)
+    if not FLAGS.only_disentangle:
+        train_imagenet = ImageNet(split="train", transform=train_transform)
     val_imagenet = ImageNet(split="val", transform=val_transform)
     train_d3s = D3S(
         Path(FLAGS.d3s_root),
@@ -138,14 +197,15 @@ def main(argv):
         transform=val_transform,
     )
 
-    train_imagenet_dataloader = DataLoader(
-        train_imagenet,
-        batch_size=FLAGS.train_batch_size,
-        shuffle=True,
-        num_workers=FLAGS.num_workers,
-        pin_memory=True,
-    )
-    train_imagenet_iter = iter(train_imagenet_dataloader)
+    if not FLAGS.only_disentangle:
+        train_imagenet_dataloader = DataLoader(
+            train_imagenet,
+            batch_size=FLAGS.train_batch_size,
+            shuffle=True,
+            num_workers=FLAGS.num_workers,
+            pin_memory=True,
+        )
+        train_imagenet_iter = iter(train_imagenet_dataloader)
     val_imagenet_dataloader = DataLoader(
         val_imagenet,
         batch_size=FLAGS.val_batch_size,
@@ -161,7 +221,9 @@ def main(argv):
         pin_memory=True,
     )
 
-    trainer = Trainer(model, FLAGS.t, FLAGS.alpha)
+    trainer = Trainer(
+        model, FLAGS.t, FLAGS.alpha, only_disentangle=FLAGS.only_disentangle
+    )
 
     now = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     log_folder = Path(FLAGS.log_folder) / now
@@ -171,13 +233,17 @@ def main(argv):
     writer = SummaryWriter(log_dir=log_folder)
 
     for i in trange(1, FLAGS.num_iters + 1):
-        try:
-            images, labels = next(train_imagenet_iter)
-        except StopIteration:
-            train_imagenet_iter = iter(train_imagenet_dataloader)
-            images, labels = next(train_imagenet_iter)
+        if FLAGS.only_disentangle:
+            batch = {}
+            labels = torch.randint(0, 1000, (FLAGS.train_batch_size,))
+        else:
+            try:
+                images, labels = next(train_imagenet_iter)
+            except StopIteration:
+                train_imagenet_iter = iter(train_imagenet_dataloader)
+                images, labels = next(train_imagenet_iter)
 
-        batch = {"imagenet_images": images.cuda(), "imagenet_labels": labels.cuda()}
+            batch = {"imagenet_images": images.cuda(), "imagenet_labels": labels.cuda()}
         batch["d3s_images"] = []
 
         for label in labels:
@@ -214,10 +280,13 @@ def main(argv):
                 }
             )
 
-        total_loss, ce_loss, contrastive_loss = trainer.train(batch)
+        if FLAGS.only_disentangle:
+            total_loss = trainer.train(batch)
+        else:
+            total_loss, ce_loss, contrastive_loss = trainer.train(batch)
+            writer.add_scalar("loss/ce_loss", ce_loss, i)
+            writer.add_scalar("loss/contrastive_loss", contrastive_loss, i)
         writer.add_scalar("loss/total_loss", total_loss, i)
-        writer.add_scalar("loss/ce_loss", ce_loss, i)
-        writer.add_scalar("loss/contrastive_loss", contrastive_loss, i)
 
         if i % FLAGS.test_every == 0:
             top1, top5 = test(
