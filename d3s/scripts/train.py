@@ -9,7 +9,7 @@ import torchvision.models as models
 import torchvision.transforms as T
 from absl import app, flags
 from d3s.datasets import D3S, ImageNet
-from d3s.ranked_info_nce import RankedInfoNCE
+from d3s.contrastive_loss import ContrastiveLoss
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm, trange
@@ -21,15 +21,16 @@ flags.DEFINE_string(
     "/cmlscratch/pkattaki/datasets/d3s",
     "Path to D3S root directory. This should contain metadata.json",
 )
-flags.DEFINE_integer("num_iters", 100, "Number of iterations to train for")
+flags.DEFINE_integer("num_iters", 100000, "Number of iterations to train for")
+flags.DEFINE_integer("num_workers", 4, "Number of workers to use for data loading")
 flags.DEFINE_integer("train_batch_size", 4, "Batch size for training")
 flags.DEFINE_integer("val_batch_size", 64, "Batch size for validation")
-flags.DEFINE_float("lr", 5e-1, "Learning rate")
+flags.DEFINE_float("lr", 1e-2, "Learning rate")
 flags.DEFINE_float("momentum", 0.9, "Momentum for SGD")
-flags.DEFINE_float("t", 1.0, "Temperature for InfoNCE")
-flags.DEFINE_float("alpha_sc", 1.0, "Weight for same class images")
-flags.DEFINE_float("alpha_sb", 1.0, "Weight for same background images")
-flags.DEFINE_integer("test_every", 100, "Test every n iterations")
+flags.DEFINE_float("weight_decay", 1e-4, "Momentum for SGD")
+flags.DEFINE_float("t", 0.3, "Temperature for InfoNCE")
+flags.DEFINE_float("alpha", 0.1, "Weight for cross entropy loss")
+flags.DEFINE_integer("test_every", 5000, "Test every n iterations")
 flags.DEFINE_string(
     "log_folder", "/cmlscratch/pkattaki/void/d3s/d3s/logs", "Path to log folder"
 )
@@ -40,49 +41,58 @@ class FeatureModel(nn.Module):
         super().__init__()
         self.model = model
         self.fc = self.model.fc
+        self.fg_features = nn.Linear(self.fc.in_features, self.fc.in_features // 2)
+        self.bg_features = nn.Linear(self.fc.in_features, self.fc.in_features // 2)
         self.model.fc = nn.Identity()
 
     def forward(self, x):
         features = self.model(x)
-        outputs = self.fc(features)
-        return outputs, features
-
-    def compress(self):
-        output = deepcopy(self.model)
-        output.fc = self.fc
-        return output
+        fg_features = self.fg_features(features)
+        bg_features = self.bg_features(features)
+        disentangled_features = torch.cat([fg_features, bg_features], dim=1)
+        outputs = self.fc(disentangled_features)
+        return outputs, fg_features, bg_features
 
 
 class Trainer:
-    def __init__(self, model, t, alphas) -> None:
+    def __init__(self, model, t, alpha) -> None:
         self.model = model
         self.ce_criterion = nn.CrossEntropyLoss()
-        self.rince_criterion = RankedInfoNCE(t=t)
+        self.contrasive_criterion = ContrastiveLoss(t=t)
         self.optimizer = optim.SGD(
             self.model.parameters(),
             lr=FLAGS.lr,
             momentum=FLAGS.momentum,
             weight_decay=FLAGS.weight_decay,
         )
-        self.alphas = alphas
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer, patience=100, threshold=1e-3, cooldown=50, min_lr=1e-4
+        )
+        self.alpha = alpha
 
     def train(self, batch):
         self.model.train()
         self.optimizer.zero_grad()
-        outputs, _ = self.model(batch["imagenet_images"])
-        loss = self.ce_criterion(outputs, batch["imagenet_labels"])
+        outputs, _, _ = self.model(batch["imagenet_images"])
+        ce_loss = self.ce_criterion(outputs, batch["imagenet_labels"])
+        contrastive_loss = 0
         for quadruplet in batch["d3s_images"]:
-            _, query = self.model(quadruplet["query"])
-            _, same_class = self.model(quadruplet["same_class"])
-            _, same_bg = self.model(quadruplet["same_bg"])
-            _, negatives = self.model(quadruplet["negatives"])
-            results = torch.stack([negatives, same_bg, same_class], dim=1)
-            loss += self.rince_criterion(query, results, self.alphas) / len(
-                batch["d3s_images"]
+            _, query_fg, query_bg = self.model(quadruplet["query"])
+            _, same_class_fg, _ = self.model(quadruplet["same_class"])
+            _, same_bg_fg, same_bg_bg = self.model(quadruplet["same_bg"])
+            _, negatives_fg, negatives_bg = self.model(quadruplet["negatives"])
+            contrastive_loss += self.contrasive_criterion(
+                query_fg, same_class_fg, torch.concat([negatives_fg, same_bg_fg])
             )
-        loss.backward()
+            contrastive_loss += self.contrasive_criterion(
+                query_bg, same_bg_bg, negatives_bg
+            )
+        contrastive_loss /= len(batch["d3s_images"])
+        total_loss = contrastive_loss + self.alpha * ce_loss
+        total_loss.backward()
         self.optimizer.step()
-        return loss.item()
+        self.scheduler.step(total_loss)
+        return total_loss.item(), ce_loss.item(), contrastive_loss.item()
 
 
 @torch.no_grad()
@@ -92,7 +102,7 @@ def test(model, dataloader, desc):
     for batch in tqdm(dataloader, desc=desc, leave=False, file=sys.stdout):
         images, labels = batch[:2]
         images, labels = images.cuda(), labels.cuda()
-        outputs, _ = model(images)
+        outputs, _, _ = model(images)
         _, top5_indices = outputs.topk(5, dim=1)
         top1_indices = top5_indices[:, 0]
         top5 += (top5_indices == labels.unsqueeze(1)).sum().item()
@@ -151,8 +161,7 @@ def main(argv):
         pin_memory=True,
     )
 
-    alphas = torch.tensor([FLAGS.alpha_sb, FLAGS.alpha_sc], device="cuda")
-    trainer = Trainer(model, FLAGS.t, alphas)
+    trainer = Trainer(model, FLAGS.t, FLAGS.alpha)
 
     now = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     log_folder = Path(FLAGS.log_folder) / now
@@ -205,8 +214,10 @@ def main(argv):
                 }
             )
 
-        loss = trainer.train(batch)
-        writer.add_scalar("loss", loss, i)
+        total_loss, ce_loss, contrastive_loss = trainer.train(batch)
+        writer.add_scalar("loss/total_loss", total_loss, i)
+        writer.add_scalar("loss/ce_loss", ce_loss, i)
+        writer.add_scalar("loss/contrastive_loss", contrastive_loss, i)
 
         if i % FLAGS.test_every == 0:
             top1, top5 = test(
@@ -223,7 +234,7 @@ def main(argv):
             writer.add_scalar("d3s/top5", top5, i)
             torch.save(
                 {
-                    "model": model.compress().state_dict(),
+                    "model": model.state_dict(),
                     "optimizer": trainer.optimizer.state_dict(),
                 },
                 log_folder / f"ckpt-{i}.pth",

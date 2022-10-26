@@ -14,3 +14,16 @@ class RankedInfoNCE(nn.Module):
         cum_exp_sims = torch.cumsum(exp_sims, dim=0)
         loss = -torch.dot(torch.log(exp_sims[1:] / cum_exp_sims[1:]), alphas)
         return loss
+
+class ContrastiveLoss(nn.Module):
+    def __init__(self, t: float = 1.0) -> None:
+        super().__init__()
+        self.cos = nn.CosineSimilarity(dim=1)
+        self.t = t
+
+    def forward(self, query, positives, negatives):
+        positives_sims = torch.exp(self.cos(query, positives) / self.t).mean(dim=0)
+        negatives_sims = torch.exp(self.cos(query, negatives) / self.t).mean(dim=0)
+        loss = -torch.log(positives_sims / (negatives_sims + positives_sims))
+        return loss
+
