@@ -22,8 +22,8 @@ class ContrastiveLoss(nn.Module):
         self.t = t
 
     def forward(self, query, positives, negatives):
-        positives_sims = torch.exp(self.cos(query, positives) / self.t).mean(dim=0)
-        negatives_sims = torch.exp(self.cos(query, negatives) / self.t).mean(dim=0)
+        positives_sims = torch.exp(self.cos(query, positives) / self.t).sum(dim=0)
+        negatives_sims = torch.exp(self.cos(query, negatives) / self.t).sum(dim=0)
         loss = -torch.log(positives_sims / (negatives_sims + positives_sims))
         return loss
 
