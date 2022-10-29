@@ -151,7 +151,7 @@ class Trainer:
                 query_fg, same_class_fg, torch.concat([negatives_fg, same_bg_fg])
             )
             contrastive_loss += self.contrasive_criterion(
-                query_bg, same_bg_bg, negatives_bg
+                query_bg, same_bg_bg[0:], negatives_bg
             )
         contrastive_loss /= len(batch["d3s_images"])
         if self.only_disentangle:
@@ -269,9 +269,7 @@ def main(argv):
             query, bg_idx = query[0], bg_idx[0]
             query = query.unsqueeze(0)
             same_class, _, _ = zip(
-                *train_d3s.get_random(
-                    class_idx=label, num_samples=FLAGS.train_batch_size
-                )
+                *train_d3s.get_random(class_idx=label, num_samples=1)
             )
             same_bg, _, _ = zip(
                 *train_d3s.get_random(
