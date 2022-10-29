@@ -72,6 +72,7 @@ class InvertibleLinear(nn.Module):
         self.bias = nn.Parameter(torch.zeros(self.num_features)) if bias else None
 
     def forward(self, x):
+        if self.lu_decompose:
             lower = self.lower * self.l_mask + self.eye
             upper = self.upper * self.l_mask.t().contiguous()
             upper = upper + torch.diag(self.sign_s * torch.exp(self.log_s))
@@ -86,11 +87,13 @@ class InvertibleLinear(nn.Module):
 
 
 class FeatureModel(nn.Module):
-    def __init__(self, model):
+    def __init__(self, model, lu_decompose=True):
         super().__init__()
         self.model = model
         self.fc = self.model.fc
-        self.disentangle = InvertibleLinear(self.fc.in_features)
+        self.disentangle = InvertibleLinear(
+            self.fc.in_features, lu_decompose=lu_decompose
+        )
         self.model.fc = nn.Identity()
 
     def forward(self, x):
@@ -181,7 +184,10 @@ def test(model, dataloader, desc):
 
 
 def main(argv):
-    model = FeatureModel(models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2))
+    model = FeatureModel(
+        models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2),
+        lu_decompose=FLAGS.lu_decompose,
+    )
     model.cuda()
 
     normalize = T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
