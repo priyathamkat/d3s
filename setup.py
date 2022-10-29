@@ -6,7 +6,9 @@ setup(
     description="Diffusion Dreamed Distribution Shifts",
     author="Priyatham Kattakinda",
     author_email="pkattaki@umd.edu",
-    packages=find_packages(exclude=[".gitignore", "README.md", "LICENSE.md", "*.ipynb"]),
+    packages=find_packages(
+        exclude=[".gitignore", "README.md", "LICENSE.md", "*.ipynb"]
+    ),
     install_requires=[
         "pyyaml",
         "numpy",
@@ -15,6 +17,7 @@ setup(
         "torchvision",
         "tqdm",
         "Pillow",
-        "lpips"
+        "lpips",
+        "timm",
     ],
 )
