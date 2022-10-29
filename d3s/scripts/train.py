@@ -23,6 +23,7 @@ flags.DEFINE_string(
     "Path to D3S root directory. This should contain metadata.json",
 )
 flags.DEFINE_bool("only_disentangle", True, "Only train disentanglement layer")
+flags.DEFINE_bool("lu_decompose", True, "Use LU decomposed linear layer")
 flags.DEFINE_integer("num_iters", 100000, "Number of iterations to train for")
 flags.DEFINE_integer("num_workers", 4, "Number of workers to use for data loading")
 flags.DEFINE_integer("train_batch_size", 4, "Batch size for training")
@@ -39,35 +40,45 @@ flags.DEFINE_string(
 
 
 class InvertibleLinear(nn.Module):
-    def __init__(self, num_features, bias=True):
+    def __init__(self, num_features, lu_decompose=True, bias=False):
         super().__init__()
-        w_init = torch.linalg.qr(torch.randn(num_features, num_features))[0]
-        p, lower, upper = torch.linalg.lu(w_init)
-        s = torch.diag(upper)
-        sign_s = torch.sign(s)
-        log_s = torch.log(torch.abs(s))
-        upper = torch.triu(upper, diagonal=1)
-        l_mask = torch.tril(torch.ones_like(w_init), diagonal=-1)
-        eye = torch.eye(num_features)
-
-        self.register_buffer("p", p)
-        self.register_buffer("sign_s", sign_s)
-        self.lower = nn.Parameter(lower)
-        self.log_s = nn.Parameter(log_s)
-        self.upper = nn.Parameter(upper)
-        self.register_buffer("l_mask", l_mask)
-        self.register_buffer("eye", eye)
-
-        self.bias = nn.Parameter(torch.zeros(num_features)) if bias else None
-
         self.num_features = num_features
+        self.lu_decompose = lu_decompose
+
+        if self.lu_decompose:
+            w_init, _ = torch.linalg.qr(
+                torch.randn(self.num_features, self.num_features)
+            )
+            p, lower, upper = torch.linalg.lu(w_init)
+            s = torch.diag(upper)
+            sign_s = torch.sign(s)
+            log_s = torch.log(torch.abs(s))
+            upper = torch.triu(upper, diagonal=1)
+            l_mask = torch.tril(torch.ones_like(w_init), diagonal=-1)
+            eye = torch.eye(self.num_features)
+
+            self.register_buffer("p", p)
+            self.register_buffer("sign_s", sign_s)
+            self.lower = nn.Parameter(lower)
+            self.log_s = nn.Parameter(log_s)
+            self.upper = nn.Parameter(upper)
+            self.register_buffer("l_mask", l_mask)
+            self.register_buffer("eye", eye)
+        else:
+            weight = torch.empty(self.num_features, self.num_features)
+            nn.init.xavier_normal_(weight)
+            self.weight = nn.Parameter(weight)
+
+        self.bias = nn.Parameter(torch.zeros(self.num_features)) if bias else None
 
     def forward(self, x):
-        lower = self.lower * self.l_mask + self.eye
-        upper = self.upper * self.l_mask.t().contiguous()
-        upper = upper + torch.diag(self.sign_s * torch.exp(self.log_s))
-        weight = self.p @ lower @ upper
-        features = F.linear(x, weight, self.bias)
+            lower = self.lower * self.l_mask + self.eye
+            upper = self.upper * self.l_mask.t().contiguous()
+            upper = upper + torch.diag(self.sign_s * torch.exp(self.log_s))
+            weight = self.p @ lower @ upper
+            features = F.linear(x, weight, self.bias)
+        else:
+            features = F.linear(x, self.weight, self.bias)
         return (
             features[:, : self.num_features // 2],
             features[:, self.num_features // 2 :],
