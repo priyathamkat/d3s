@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 import torch
+import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -183,6 +184,45 @@ def test(model, dataloader, desc):
     return 100 * top1 / total, 100 * top5 / total
 
 
+def get_from_d3s(input_queue, output_queue):
+    d3s = D3S(
+        Path(FLAGS.d3s_root),
+        split="train",
+        shift="background-shift",
+    )
+    while True:
+        label = input_queue.get()
+        if label is not None:
+            query, _, bg_idx = zip(*d3s.get_random(class_idx=label))
+            bg_idx = bg_idx[0]
+            same_class, _, _ = zip(*d3s.get_random(class_idx=label, num_samples=1))
+            same_bg, _, _ = zip(
+                *d3s.get_random(
+                    bg_idx=bg_idx,
+                    not_class_idx=label,
+                    num_samples=FLAGS.train_batch_size,
+                )
+            )
+            negatives, _, _ = zip(
+                *d3s.get_random(
+                    not_class_idx=label,
+                    not_bg_idx=bg_idx,
+                    num_samples=FLAGS.train_batch_size,
+                )
+            )
+
+            output_queue.put(
+                {
+                    "query": query,
+                    "same_class": same_class,
+                    "same_bg": same_bg,
+                    "negatives": negatives,
+                }
+            )
+        else:
+            break
+
+
 def main(argv):
     model = FeatureModel(
         models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2),
@@ -201,12 +241,6 @@ def main(argv):
     if not FLAGS.only_disentangle:
         train_imagenet = ImageNet(split="train", transform=train_transform)
     val_imagenet = ImageNet(split="val", transform=val_transform)
-    train_d3s = D3S(
-        Path(FLAGS.d3s_root),
-        split="train",
-        shift="background-shift",
-        transform=train_transform,
-    )
     val_d3s = D3S(
         Path(FLAGS.d3s_root),
         split="val",
@@ -249,6 +283,14 @@ def main(argv):
 
     writer = SummaryWriter(log_dir=log_folder)
 
+    input_queue = mp.Queue(maxsize=2 * FLAGS.num_workers)
+    output_queue = mp.Queue(maxsize=2 * FLAGS.num_workers)
+    processes = []
+    for _ in range(FLAGS.num_workers):
+        p = mp.Process(target=get_from_d3s, args=(input_queue, output_queue))
+        p.start()
+        processes.append(p)
+
     for i in trange(1, FLAGS.num_iters + 1):
         if FLAGS.only_disentangle:
             batch = {}
@@ -265,35 +307,16 @@ def main(argv):
 
         for label in labels:
             label = label.item()
-            query, _, bg_idx = zip(*train_d3s.get_random(class_idx=label))
-            query, bg_idx = query[0], bg_idx[0]
-            query = query.unsqueeze(0)
-            same_class, _, _ = zip(
-                *train_d3s.get_random(class_idx=label, num_samples=1)
-            )
-            same_bg, _, _ = zip(
-                *train_d3s.get_random(
-                    bg_idx=bg_idx,
-                    not_class_idx=label,
-                    num_samples=FLAGS.train_batch_size,
-                )
-            )
-            negatives, _, _ = zip(
-                *train_d3s.get_random(
-                    not_class_idx=label,
-                    not_bg_idx=bg_idx,
-                    num_samples=FLAGS.train_batch_size,
-                )
-            )
+            input_queue.put(label)
 
-            batch["d3s_images"].append(
-                {
-                    "query": query.cuda(),
-                    "same_class": torch.stack(same_class).cuda(),
-                    "same_bg": torch.stack(same_bg).cuda(),
-                    "negatives": torch.stack(negatives).cuda(),
-                }
-            )
+        for _ in labels:
+            d3s_batch = output_queue.get()
+            for k in d3s_batch:
+                # using `train_transform` inside `get_from_d3s` hangs for some reason
+                d3s_batch[k] = torch.stack(
+                    [train_transform(x) for x in d3s_batch[k]]
+                ).cuda()
+            batch["d3s_images"].append(d3s_batch)
 
         if FLAGS.only_disentangle:
             total_loss = trainer.train(batch)
@@ -331,6 +354,12 @@ def main(argv):
         }
     )
     writer.close()
+
+    for _ in range(FLAGS.num_workers):
+        input_queue.put(None)  # sentinel values to signal subprocesses to exit
+
+    for p in processes:
+        p.join()  # wait for all subprocesses to finish
 
 
 if __name__ == "__main__":
