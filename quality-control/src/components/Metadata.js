@@ -10,7 +10,8 @@ export default class Metadata extends React.Component {
                 alt=""
                 key={idx.toString()}
                 src={
-                    "http://d3s-bucket.s3-website-us-east-1.amazonaws.com/imagenet_samples/" +
+                    process.env.REACT_APP_BUCKET_URL +
+                    "imagenet_samples/" +
                     this.props.classIdx +
                     "_" +
                     idx +
