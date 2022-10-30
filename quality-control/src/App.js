@@ -17,6 +17,9 @@ export default class App extends React.Component {
             inputData = JSON.parse(inputData);
         }
         this.images = inputData.map((x) => x.image);
+        if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
+            this.images = this.images.map((x) => "http://localhost:7777/" + x);
+        }
         this.classIdxs = inputData.map((x) => x.classIdx);
         this.backgrounds = inputData.map((x) => x.background);
         this.hasInits = inputData.map((x) => x.hasInit);
