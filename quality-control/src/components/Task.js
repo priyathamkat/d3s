@@ -12,70 +12,6 @@ export default class Task extends React.Component {
 
     render() {
         const clsName = this.classes[this.props.classIdx];
-        let backgroundQuestion;
-        if (this.props.background) {
-            backgroundQuestion = (
-                <div className="question">
-                    Is the background
-                    <em>&nbsp;{this.props.background}</em>?
-                    <Option
-                        type="radio"
-                        value="yes"
-                        name="background"
-                        id="radio-bg-yes"
-                        option="Yes"
-                        checked={this.props.attributes.background === "Yes"}
-                        onChange={this.props.onChange}
-                    />
-                    <Option
-                        type="radio"
-                        value="no"
-                        name="background"
-                        id="radio-bg-no"
-                        option="No"
-                        checked={this.props.attributes.background === "No"}
-                        onChange={this.props.onChange}
-                    />
-                </div>
-            );
-        } else {
-            backgroundQuestion = null;
-        }
-        let initQuestion;
-        if (this.props.hasInit) {
-            initQuestion = <div className="question">
-                How well are the foreground characteristics reproduced?
-                    <Option
-                        type="radio"
-                        value="0"
-                        name="init"
-                        id="radio-init-0"
-                        option="0"
-                        checked={this.props.attributes.init === "0"}
-                        onChange={this.props.onChange}
-                    />
-                    <Option
-                        type="radio"
-                        value="1"
-                        name="init"
-                        id="radio-init-1"
-                        option="1"
-                        checked={this.props.attributes.init === "1"}
-                        onChange={this.props.onChange}
-                    />
-                    <Option
-                        type="radio"
-                        value="2"
-                        name="init"
-                        id="radio-init-2"
-                        option="2"
-                        checked={this.props.attributes.init === "2"}
-                        onChange={this.props.onChange}
-                    />
-            </div>;
-        } else {
-            initQuestion = null;
-        }
         return (
             <div className="task">
                 <div id="container">
@@ -83,8 +19,8 @@ export default class Task extends React.Component {
                         <img alt="" id="task-img" src={this.props.imgSrc} />
                         <div id="questions">
                             <div className="question">
-                                Is a <em>&nbsp;{clsName}&nbsp;</em> in the
-                                image?
+                                Does the right image have the object that is in
+                                the left image?
                                 <Option
                                     type="radio"
                                     value="yes"
@@ -110,8 +46,12 @@ export default class Task extends React.Component {
                                     onChange={this.props.onChange}
                                 />
                             </div>
-                            {backgroundQuestion}
-                            {initQuestion}
+                            <div>
+                                <em>
+                                    (Some useful information about the object is
+                                    in the panel on the right)
+                                </em>
+                            </div>
                             <div className="question">
                                 Is this an NSFW image?
                                 <Option

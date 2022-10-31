@@ -11,7 +11,8 @@ export default class Definition extends React.Component {
     render() {
         return (
             <div>
-                <em>{this.dictionary[this.props.clsIdx]}</em>
+                <strong>Definition:</strong>{" "}
+                {this.dictionary[this.props.clsIdx]}
             </div>
         );
     }

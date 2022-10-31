@@ -19,14 +19,16 @@ export default class Metadata extends React.Component {
                 }
             ></img>
         ));
+        const shortName = this.props.clsName.split(",")[0];
         return (
             <div>
                 <div>
                     <div>
-                        <h3>{this.props.clsName}</h3>
+                        <strong>Name:</strong> {shortName}
                         <Definition clsIdx={this.props.classIdx} />
                     </div>
                 </div>
+                <strong>Sample Images:</strong>
                 <div id="sample-images">{sampleImages}</div>
             </div>
         );
