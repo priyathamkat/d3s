@@ -18,7 +18,10 @@ export default class App extends React.Component {
         }
         this.images = inputData.map((x) => x.image);
         if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
-            this.images = this.images.map((x) => "http://localhost:7777/" + x);
+            this.images = this.images.map((x) => {
+                const splits = x.split("/");
+                return "http://localhost:7777/" + splits.slice(5).join("/");
+            });
         }
         this.classIdxs = inputData.map((x) => x.classIdx);
         let state = {
