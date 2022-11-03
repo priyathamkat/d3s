@@ -37,7 +37,7 @@ flags.DEFINE_float("t", 0.3, "Temperature for InfoNCE")
 flags.DEFINE_float("alpha", 0.1, "Weight for cross entropy loss")
 flags.DEFINE_integer("test_every", 5000, "Test every n iterations")
 flags.DEFINE_string(
-    "log_folder", "/cmlscratch/pkattaki/void/d3s/d3s/logs", "Path to log folder"
+    "log_folder", "/cmlscratch/pkattaki/void/d3s/d3s/logs/train_disentanglement", "Path to log folder"
 )
 
 
