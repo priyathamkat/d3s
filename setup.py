@@ -19,5 +19,6 @@ setup(
         "Pillow",
         "lpips",
         "timm",
+        "boto3",
     ],
 )
