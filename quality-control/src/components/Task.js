@@ -53,7 +53,7 @@ export default class Task extends React.Component {
                                 </em>
                             </div>
                             <div className="question">
-                                Is this an NSFW image?
+                                Does the image have any adult content (nudity / extreme violence)?
                                 <Option
                                     type="radio"
                                     value="yes"
