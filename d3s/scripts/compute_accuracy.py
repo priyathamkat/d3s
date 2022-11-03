@@ -26,7 +26,7 @@ flags.DEFINE_string(
 )
 flags.DEFINE_enum(
     "shift",
-    "all",
+    "background-shift",
     ["all", "background-shift", "geography-shift", "time-shift"],
     "Shift to use for evaluation",
 )
@@ -82,7 +82,7 @@ def main(argv):
         data["ImageNet Top-1"].append(imagenet_top1)
         data["ImageNet Top-5"].append(imagenet_top5)
         
-        dataset = D3S(Path(FLAGS.d3s_root), shift=FLAGS.shift, transform=transform)
+        dataset = D3S(Path(FLAGS.d3s_root), split="val", shift=FLAGS.shift, transform=transform)
         dataloader = DataLoader(
             dataset,
             batch_size=FLAGS.batch_size,
