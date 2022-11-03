@@ -13,8 +13,19 @@ export default class App extends React.Component {
         if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
             inputData = data;
         } else {
-            inputData = document.getElementById("inputData").value;
-            inputData = JSON.parse(inputData);
+            let strData = document.getElementById("inputData").value;
+            if (strData === "${inputData}") {
+                strData = "train/background-shift/566005.png, 699";
+            }
+            const arrayData = strData.split(", ");
+            const folderUrl = process.env.REACT_APP_BUCKET_URL + "d3s_samples/";
+            inputData = [];
+            for (let i = 0; i < arrayData.length; i += 2) {
+                inputData.push({
+                    image: folderUrl + arrayData[i],
+                    classIdx: arrayData[i + 1],
+                });
+            }
         }
         this.images = inputData.map((x) => x.image);
         if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
