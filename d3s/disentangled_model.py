@@ -50,7 +50,7 @@ class InvertibleLinear(nn.Module):
         )
 
 
-class FeatureModel(nn.Module):
+class DisentangledModel(nn.Module):
     def __init__(self, model, lu_decompose=True):
         super().__init__()
         self.model = model

@@ -5,7 +5,6 @@ from pathlib import Path
 import torch
 import torch.multiprocessing as mp
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 import torchvision.models as models
 import torchvision.transforms as T
