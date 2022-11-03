@@ -9,6 +9,7 @@ test.png
 inputData.json
 images/
 augmentation-study.ipynb
+.env.production
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
