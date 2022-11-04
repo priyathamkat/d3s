@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class InvertibleLinear(nn.Module):
-    def __init__(self, num_features, lu_decompose=True, bias=False):
+    def __init__(self, num_features, lu_decompose=True, bias=True):
         super().__init__()
         self.num_features = num_features
         self.lu_decompose = lu_decompose
