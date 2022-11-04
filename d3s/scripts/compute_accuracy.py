@@ -123,7 +123,7 @@ def main(argv):
     if FLAGS.save_majority_misclassified:
         majority_misclassified = []
         for idx, count in num_incorrect_classifications.items():
-            if count >= ceil(len(model_names) / 2):
+            if count == len(model_names):
                 majority_misclassified.append(
                     {
                         "image": dataset.images[idx]["image_path"],
