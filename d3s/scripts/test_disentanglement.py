@@ -32,7 +32,9 @@ flags.DEFINE_float("momentum", 0.9, "Momentum for SGD")
 flags.DEFINE_float("weight_decay", 1e-4, "Momentum for SGD")
 flags.DEFINE_integer("test_every", 5000, "Test every n iterations")
 flags.DEFINE_string(
-    "log_folder", "/cmlscratch/pkattaki/void/d3s/d3s/logs/test_disentanglement", "Path to log folder"
+    "log_folder",
+    "/cmlscratch/pkattaki/void/d3s/d3s/logs/test_disentanglement",
+    "Path to log folder",
 )
 
 
@@ -59,24 +61,25 @@ class Trainer:
     def __init__(self, model) -> None:
         self.model = model
         self.ce_criterion = nn.CrossEntropyLoss()
-        
+
         self.optimizer = optim.SGD(
-                self.model.heads.parameters(),
-                lr=FLAGS.lr,
-                momentum=FLAGS.momentum,
-                weight_decay=FLAGS.weight_decay,
-            )
+            self.model.heads.parameters(),
+            lr=FLAGS.lr,
+            momentum=FLAGS.momentum,
+            weight_decay=FLAGS.weight_decay,
+        )
 
     def train(self, batch):
         self.optimizer.zero_grad()
         fg_logits, bg_logits = self.model(batch["images"])
         fg_loss = self.ce_criterion(fg_logits, batch["fg_labels"])
         bg_labels = batch["bg_labels"]
-        bg_loss = self.ce_criterion(bg_logits[-bg_labels.shape[0]:], bg_labels)
+        bg_loss = self.ce_criterion(bg_logits[-bg_labels.shape[0] :], bg_labels)
         total_loss = fg_loss + bg_loss
         total_loss.backward()
         self.optimizer.step()
         return total_loss.item(), fg_loss.item(), bg_loss.item()
+
 
 @torch.no_grad()
 def test(model, dataloader, desc):
@@ -102,6 +105,7 @@ def test(model, dataloader, desc):
     bg_top1 = 100 * bg_top1 / total
     return fg_top1, fg_top5, bg_top1
 
+
 def main(argv):
     disentangled_model = DisentangledModel(
         models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2),
@@ -119,7 +123,7 @@ def main(argv):
     val_transform = T.Compose(
         [T.Resize(256), T.CenterCrop(224), T.ToTensor(), normalize]
     )
-    
+
     train_imagenet = ImageNet(split="train", transform=train_transform)
     val_imagenet = ImageNet(split="val", transform=val_transform)
     train_d3s = D3S(
@@ -135,12 +139,12 @@ def main(argv):
         transform=val_transform,
     )
     train_imagenet_dataloader = DataLoader(
-            train_imagenet,
-            batch_size=FLAGS.train_batch_size // 2,
-            shuffle=True,
-            num_workers=FLAGS.num_workers,
-            pin_memory=True,
-        )
+        train_imagenet,
+        batch_size=FLAGS.train_batch_size // 2,
+        shuffle=True,
+        num_workers=FLAGS.num_workers,
+        pin_memory=True,
+    )
     train_imagenet_iter = iter(train_imagenet_dataloader)
     val_imagenet_dataloader = DataLoader(
         val_imagenet,
@@ -180,19 +184,19 @@ def main(argv):
         except StopIteration:
             train_imagenet_iter = iter(train_imagenet_dataloader)
             imagenet_batch = next(train_imagenet_iter)
-        
+
         try:
             d3s_batch = next(train_d3s_iter)
         except StopIteration:
             train_d3s_iter = iter(train_d3s_dataloader)
             d3s_batch = next(train_d3s_iter)
-        
+
         batch = {
             "images": torch.cat([imagenet_batch[0], d3s_batch[0]], dim=0).cuda(),
             "fg_labels": torch.cat([imagenet_batch[1], d3s_batch[1]], dim=0).cuda(),
-            "bg_labels": d3s_batch[2].cuda()
+            "bg_labels": d3s_batch[2].cuda(),
         }
-        
+
         total_loss, fg_loss, bg_loss = trainer.train(batch)
 
         writer.add_scalar("loss/total_loss", total_loss, i)
@@ -208,7 +212,9 @@ def main(argv):
             writer.add_scalar("imagenet/fg_top1", fg_top1, i)
             writer.add_scalar("imagenet/fg_top5", fg_top5, i)
             fg_top1, fg_top5, bg_top1 = test(
-                testing_model, val_d3s_dataloader, f"Testing on D3S after {i} iterations"
+                testing_model,
+                val_d3s_dataloader,
+                f"Testing on D3S after {i} iterations",
             )
             writer.add_scalar("d3s/fg_top1", fg_top1, i)
             writer.add_scalar("d3s/fg_top5", fg_top5, i)
@@ -221,6 +227,7 @@ def main(argv):
         }
     )
     writer.close()
+
 
 if __name__ == "__main__":
     flags.mark_flags_as_required(["model_ckpt"])
