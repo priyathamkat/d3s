@@ -264,15 +264,15 @@ def main(argv):
 
         if i % FLAGS.switch_frequency == 0:
             optimize_mine = not optimize_mine
-        if FLAGS.only_disentangle:
-            total_loss = trainer.train(batch, optimize_mine=optimize_mine)
-        else:
-            total_loss, ce_loss, mine_loss = trainer.train(
-                batch, optimize_mine=optimize_mine
-            )
-            writer.add_scalar("loss/ce_loss", ce_loss, i)
-            writer.add_scalar("loss/mine_loss", mine_loss, i)
+        losses = trainer.train(batch, optimize_mine=optimize_mine)
+
         if not optimize_mine:
+            if FLAGS.only_disentangle:
+                total_loss = losses
+            else:
+                total_loss, ce_loss, mine_loss = losses
+                writer.add_scalar("loss/ce_loss", ce_loss, i)
+                writer.add_scalar("loss/mine_loss", mine_loss, i)
             writer.add_scalar("loss/total_loss", total_loss, i)
 
         if i % FLAGS.test_every == 0:
