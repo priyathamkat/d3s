@@ -6,8 +6,9 @@ import torch.nn as nn
 class DINO(nn.Module):
     def __init__(self, arch):
         super().__init__()
+        self.arch = arch
         self.backbone = torch.hub.load(
-            "facebookresearch/dino:main", arch, pretrained=True
+            "facebookresearch/dino:main", self.arch, pretrained=True
         )
         linear_ckpt_urls = {
             "dino_vits16": "https://dl.fbaipublicfiles.com/dino/dino_deitsmall16_pretrain/dino_deitsmall16_linearweights.pth",
@@ -21,7 +22,7 @@ class DINO(nn.Module):
             "dino_resnet50": "https://dl.fbaipublicfiles.com/dino/dino_resnet50_pretrain/dino_resnet50_linearweights.pth",
         }
         linear_ckpt = torch.hub.load_state_dict_from_url(
-            linear_ckpt_urls[arch], map_location="cpu"
+            linear_ckpt_urls[self.arch], map_location="cpu"
         )["state_dict"]
         modified_ckpt = {}
         for k, v in linear_ckpt.items():
@@ -36,8 +37,18 @@ class DINO(nn.Module):
                 T.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ]
         )
+        self.n = 4 if "vits" in self.arch else 1
+        self.avgpool = "vitb" in self.arch
 
     def forward(self, x):
-        x = self.backbone(x)
-        x = self.fc(x)
-        return x
+        if "vit" in self.arch:
+            intermediate_output = self.backbone.get_intermediate_layers(x, self.n)
+            output = torch.cat([x[:, 0] for x in intermediate_output], dim=-1)
+            if self.avgpool:
+                output = torch.cat((output.unsqueeze(-1), torch.mean(intermediate_output[-1][:, 1:], dim=1).unsqueeze(-1)), dim=-1)
+                output = output.reshape(output.shape[0], -1)
+        else:
+            output = self.backbone(x)
+            
+        output = self.fc(output)
+        return output
