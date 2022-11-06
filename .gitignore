@@ -6,7 +6,7 @@ logs/
 outputs/
 temp.py
 test.png
-inputData.json
+inputData*
 images/
 augmentation-study.ipynb
 .env.production

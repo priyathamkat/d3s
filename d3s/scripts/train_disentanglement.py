@@ -5,16 +5,17 @@ from pathlib import Path
 import torch
 import torch.multiprocessing as mp
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 import torchvision.models as models
 import torchvision.transforms as T
 from absl import app, flags
-from d3s.contrastive_loss import ContrastiveLoss
-from d3s.datasets import D3S, ImageNet
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm, trange
+
+from d3s.contrastive_loss import ContrastiveLoss
+from d3s.datasets import D3S, ImageNet
+from d3s.disentangled_model import DisentangledModel
 
 FLAGS = flags.FLAGS
 
@@ -36,72 +37,8 @@ flags.DEFINE_float("t", 0.3, "Temperature for InfoNCE")
 flags.DEFINE_float("alpha", 0.1, "Weight for cross entropy loss")
 flags.DEFINE_integer("test_every", 5000, "Test every n iterations")
 flags.DEFINE_string(
-    "log_folder", "/cmlscratch/pkattaki/void/d3s/d3s/logs", "Path to log folder"
+    "log_folder", None, "Path to log folder"
 )
-
-
-class InvertibleLinear(nn.Module):
-    def __init__(self, num_features, lu_decompose=True, bias=False):
-        super().__init__()
-        self.num_features = num_features
-        self.lu_decompose = lu_decompose
-
-        if self.lu_decompose:
-            w_init, _ = torch.linalg.qr(
-                torch.randn(self.num_features, self.num_features)
-            )
-            p, lower, upper = torch.linalg.lu(w_init)
-            s = torch.diag(upper)
-            sign_s = torch.sign(s)
-            log_s = torch.log(torch.abs(s))
-            upper = torch.triu(upper, diagonal=1)
-            l_mask = torch.tril(torch.ones_like(w_init), diagonal=-1)
-            eye = torch.eye(self.num_features)
-
-            self.register_buffer("p", p)
-            self.register_buffer("sign_s", sign_s)
-            self.lower = nn.Parameter(lower)
-            self.log_s = nn.Parameter(log_s)
-            self.upper = nn.Parameter(upper)
-            self.register_buffer("l_mask", l_mask)
-            self.register_buffer("eye", eye)
-        else:
-            weight = torch.empty(self.num_features, self.num_features)
-            nn.init.xavier_normal_(weight)
-            self.weight = nn.Parameter(weight)
-
-        self.bias = nn.Parameter(torch.zeros(self.num_features)) if bias else None
-
-    def forward(self, x):
-        if self.lu_decompose:
-            lower = self.lower * self.l_mask + self.eye
-            upper = self.upper * self.l_mask.t().contiguous()
-            upper = upper + torch.diag(self.sign_s * torch.exp(self.log_s))
-            weight = self.p @ lower @ upper
-            features = F.linear(x, weight, self.bias)
-        else:
-            features = F.linear(x, self.weight, self.bias)
-        return (
-            features[:, : self.num_features // 2],
-            features[:, self.num_features // 2 :],
-        )
-
-
-class FeatureModel(nn.Module):
-    def __init__(self, model, lu_decompose=True):
-        super().__init__()
-        self.model = model
-        self.fc = self.model.fc
-        self.disentangle = InvertibleLinear(
-            self.fc.in_features, lu_decompose=lu_decompose
-        )
-        self.model.fc = nn.Identity()
-
-    def forward(self, x):
-        features = self.model(x)
-        fg_features, bg_features = self.disentangle(features)
-        outputs = self.fc(features)
-        return outputs, fg_features, bg_features
 
 
 class Trainer:
@@ -224,7 +161,7 @@ def get_from_d3s(input_queue, output_queue):
 
 
 def main(argv):
-    model = FeatureModel(
+    model = DisentangledModel(
         models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2),
         lu_decompose=FLAGS.lu_decompose,
     )
@@ -363,4 +300,5 @@ def main(argv):
 
 
 if __name__ == "__main__":
+    flags.mark_flags_as_required(["log_folder"])
     app.run(main)
