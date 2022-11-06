@@ -12,12 +12,8 @@ class CLIPZeroShotClassifier(nn.Module):
         super().__init__()
         arch = arch.replace("clip-", "")
         self.model, preprocess = clip.load(arch, device=device)
-        self.transform = T.Compose(
-            [
-                T.Lambda(lambda x: preprocess(x)),
-                T.Lambda(lambda x: x.unsqueeze(0)),
-            ]
-        )
+        self.transform = T.Lambda(lambda x: preprocess(x))
+
         with open(
             Path(__file__).parent.parent / "metadata/imagenet_classes.json", "r"
         ) as f:
@@ -32,6 +28,6 @@ class CLIPZeroShotClassifier(nn.Module):
     def forward(self, x):
         image_features = self.model.encode_image(x)
         image_features /= image_features.norm(dim=-1, keepdim=True)
-        
+
         similarity = (100.0 * image_features @ self.text_features.T).softmax(dim=-1)
         return similarity
