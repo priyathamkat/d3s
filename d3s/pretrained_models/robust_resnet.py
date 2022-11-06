@@ -2,6 +2,7 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
+import torchvision.transforms as T
 from robustness.datasets import ImageNet
 from robustness.model_utils import make_and_restore_model
 
@@ -20,6 +21,11 @@ class RobustResNet50(nn.Module):
             raise ValueError(f"Unknown arch: {arch}")
         ckpt_path = str(Path(torch.hub.get_dir()) / "robustness" / ckpt_name)
         self.model, _ = make_and_restore_model(arch="resnet50", dataset=imagenet, resume_path=ckpt_path)
+        self.transform = T.Compose([
+            T.Resize(256),
+            T.CenterCrop(224),
+            T.ToTensor(),
+        ])
         
     def forward(self, x):
         x = self.model(x, with_image=False)
