@@ -45,10 +45,16 @@ class DINO(nn.Module):
             intermediate_output = self.backbone.get_intermediate_layers(x, self.n)
             output = torch.cat([x[:, 0] for x in intermediate_output], dim=-1)
             if self.avgpool:
-                output = torch.cat((output.unsqueeze(-1), torch.mean(intermediate_output[-1][:, 1:], dim=1).unsqueeze(-1)), dim=-1)
+                output = torch.cat(
+                    (
+                        output.unsqueeze(-1),
+                        torch.mean(intermediate_output[-1][:, 1:], dim=1).unsqueeze(-1),
+                    ),
+                    dim=-1,
+                )
                 output = output.reshape(output.shape[0], -1)
         else:
             output = self.backbone(x)
-            
+
         output = self.fc(output)
         return output
