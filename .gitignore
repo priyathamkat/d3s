@@ -1,5 +1,5 @@
 # SLURM job files
-job.sh
+job*.sh
 *.out
 
 logs/
