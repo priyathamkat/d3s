@@ -24,6 +24,6 @@ class ImageNet(D.ImageNet):
 
         self._rng = np.random.default_rng()
 
-    def get_random(self, class_idx: int) -> Any:
-        index = self._rng.choice(self.class_to_indices[class_idx])
-        return self[index]
+    def get_random(self, class_idx: int, num_samples: int = 1) -> Any:
+        options = self.class_to_indices[class_idx]
+        return [self[idx] for idx in self._rng.choice(options, size=num_samples)]
