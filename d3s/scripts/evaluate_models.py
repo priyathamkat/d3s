@@ -50,9 +50,10 @@ def test(model, dataloader, device, pbar, is_d3s=False, num_classes=0, num_bgs=0
         if is_d3s:
             bg_idxs = batch[2]
 
-            stats[0, class_idxs, bg_idxs] += is_correct_top1
-            stats[1, class_idxs, bg_idxs] += is_correct_top5
-            stats[2, class_idxs, bg_idxs] += 1
+            for batch_idx, (class_idx, bg_idx) in enumerate(zip(class_idxs, bg_idxs)):
+                stats[0, class_idx, bg_idx] += is_correct_top1[batch_idx]
+                stats[1, class_idx, bg_idx] += is_correct_top5[batch_idx]
+                stats[2, class_idx, bg_idx] += 1
 
         top5 += is_correct_top5.sum().item()
         top1 += is_correct_top1.sum().item()
