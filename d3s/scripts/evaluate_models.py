@@ -136,7 +136,6 @@ def main(argv):
         "resnext50_32x4d",
         "densenet121",
         "efficientnet_b0",
-        "efficientnet_b5",
         # https://arxiv.org/abs/2010.11929
         "vit_base_patch16_224",
         "vit_large_patch32_384",
