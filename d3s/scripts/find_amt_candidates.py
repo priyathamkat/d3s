@@ -60,7 +60,15 @@ def test(model, dataloader, desc):
 def main(argv):
     data = defaultdict(list)
     num_incorrect_classifications = defaultdict(int)
-    model_names = ["resnet50", "resnext50_32x4d", "densenet121", "efficientnet_b1", "vit_base_patch16_224", "inception_resnet_v2", "mobilenetv3_small_100"]
+    model_names = [
+        "resnet50",
+        "resnext50_32x4d",
+        "densenet121",
+        "efficientnet_b1",
+        "vit_base_patch16_224",
+        "inception_resnet_v2",
+        "mobilenetv3_small_100",
+    ]
     for model_name in model_names:
         data["Model Architecture"].append(model_name)
         model = timm.create_model(model_name, pretrained=True).cuda()
@@ -80,8 +88,10 @@ def main(argv):
 
         data["ImageNet Top-1"].append(imagenet_top1)
         data["ImageNet Top-5"].append(imagenet_top5)
-        
-        dataset = D3S(Path(FLAGS.d3s_root), split="val", shift=FLAGS.shift, transform=transform)
+
+        dataset = D3S(
+            Path(FLAGS.d3s_root), split="val", shift=FLAGS.shift, transform=transform
+        )
         dataloader = DataLoader(
             dataset,
             batch_size=FLAGS.batch_size,
@@ -103,22 +113,35 @@ def main(argv):
     df["Drop in Top-5"] = df["ImageNet Top-5"] - df["D3S Top-5"]
     save_folder = Path(__file__).parent.parent / "outputs"
     df.to_csv(save_folder / "accuracy.csv", index=False)
-    
-    melted = pd.melt(df, id_vars=["Model Architecture"], value_vars=["Drop in Top-1", "Drop in Top-5"], var_name="type", value_name="Drop")
-    
+
+    melted = pd.melt(
+        df,
+        id_vars=["Model Architecture"],
+        value_vars=["Drop in Top-1", "Drop in Top-5"],
+        var_name="type",
+        value_name="Drop",
+    )
+
     path = "/cmlscratch/pkattaki/void/d3s/d3s/assets/Roboto-Regular.ttf"
     fontManager.addfont(path)
     prop = FontProperties(fname=path, weight="regular")
     sns.set(font=prop.get_name())
     plt.figure(dpi=600)
-    plot = sns.catplot(data=melted, kind="bar", x="Model Architecture", y="Drop", hue="type", facet_kws={'legend_out': True})
+    plot = sns.catplot(
+        data=melted,
+        kind="bar",
+        x="Model Architecture",
+        y="Drop",
+        hue="type",
+        facet_kws={"legend_out": True},
+    )
     legend_labels = ["Top-1", "Top-5"]
     for legend_text, legend_label in zip(plot._legend.texts, legend_labels):
         legend_text.set_text(legend_label)
     plot._legend.set_title("")
     plt.ylabel("Accuracy Drop on D3S")
     plt.savefig(save_folder / "accuracy.png")
-    
+
     if FLAGS.save_majority_misclassified:
         majority_misclassified = []
         for idx, count in num_incorrect_classifications.items():
