@@ -153,8 +153,8 @@ def main(argv):
         # https://github.com/facebookresearch/semi-supervised-ImageNet1K-models
         "ssl_resnet50",  # pretrained on YFCC100M, finetuned on ImageNet-1k
         "ssl_resnext50_32x4d",  # pretrained on YFCC100M, finetuned on ImageNet-1k
-        "swsl_resnet50",  # pretrained on images weakly matching ImageNet-1K synsets, finetuned onn ImageNet-1K
-        "swsl_resnext50_32x4d",  # pretrained on images weakly matching ImageNet-1K synsets, finetuned onn ImageNet-1K
+        "swsl_resnet50",  # pretrained on images weakly matching ImageNet-1K synsets, finetuned on ImageNet-1K
+        "swsl_resnext50_32x4d",  # pretrained on images weakly matching ImageNet-1K synsets, finetuned on ImageNet-1K
         # https://arxiv.org/pdf/1804.00097.pdf
         "adv_inception_v3",  # pretrained on ImageNet-1k, finetuned on ImageNet-1k
         "ens_adv_inception_resnet_v2",  # pretrained on ImageNet-1k, finetuned on ImageNet-1k
