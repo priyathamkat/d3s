@@ -59,7 +59,7 @@ class DisentangledModel(nn.Module):
 
         assert (num_fg_features is not None) ^ (
             num_bg_features is not None
-        ), "Must specify exactly one of um_bg_features or num_fg_features"
+        ), "Must specify exactly one of num_bg_features or num_fg_features"
         if num_bg_features is None:
             num_bg_features = self.num_features - num_fg_features
         if num_fg_features is None:
