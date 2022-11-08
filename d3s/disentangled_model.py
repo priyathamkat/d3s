@@ -44,24 +44,39 @@ class InvertibleLinear(nn.Module):
             features = F.linear(x, weight, self.bias)
         else:
             features = F.linear(x, self.weight, self.bias)
-        return (
-            features[:, : self.num_features // 2],
-            features[:, self.num_features // 2 :],
-        )
+        return features
 
 
 class DisentangledModel(nn.Module):
-    def __init__(self, model, lu_decompose=True):
+    def __init__(
+        self, model, num_fg_features=None, num_bg_features=None, lu_decompose=True
+    ):
         super().__init__()
+
         self.model = model
         self.fc = self.model.fc
+        self.num_features = self.fc.in_features
+
+        assert (num_fg_features is not None) ^ (
+            num_bg_features is not None
+        ), "Must specify exactly one of um_bg_features or num_fg_features"
+        if num_bg_features is None:
+            num_bg_features = self.num_features - num_fg_features
+        if num_fg_features is None:
+            num_fg_features = self.num_features - num_bg_features
+
+        self.num_fg_features = num_fg_features
+        self.num_bg_features = num_bg_features
+
         self.disentangle = InvertibleLinear(
-            self.fc.in_features, lu_decompose=lu_decompose
+            self.num_features, lu_decompose=lu_decompose
         )
         self.model.fc = nn.Identity()
 
     def forward(self, x):
         features = self.model(x)
-        fg_features, bg_features = self.disentangle(features)
+        disentangled_features = self.disentangle(features)
+        fg_features = disentangled_features[:, : self.num_fg_features]
+        bg_features = disentangled_features[:, -self.num_bg_features :]
         outputs = self.fc(features)
         return outputs, fg_features, bg_features

@@ -45,8 +45,8 @@ class DisentanglementTestingModel(nn.Module):
         self.model.eval()
         for param in self.model.parameters():
             param.requires_grad_(False)
-        self.fg_head = nn.Linear(self.model.disentangle.num_features // 2, fg_classes)
-        self.bg_head = nn.Linear(self.model.disentangle.num_features // 2, bg_classes)
+        self.fg_head = nn.Linear(self.model.num_bg_features, fg_classes)
+        self.bg_head = nn.Linear(self.model.num_fg_features, bg_classes)
         self.heads = nn.ModuleList([self.fg_head, self.bg_head])
 
     def forward(self, x):

@@ -33,6 +33,7 @@ flags.DEFINE_float("lr", 1e-3, "Learning rate")
 flags.DEFINE_float("weight_decay", 1e-4, "Momentum for SGD")
 flags.DEFINE_float("mine_ma_rate", 0.1, "Moving average rate for MINE")
 flags.DEFINE_float("alpha", 0.1, "Weight for cross entropy loss")
+flags.DEFINE_integer("num_bg_features", 20, "Number of background features")
 flags.DEFINE_integer(
     "switch_frequency", 10, "How often to switch between optimizing model and mine"
 )
@@ -46,11 +47,11 @@ class Trainer:
         self.ce_criterion = nn.CrossEntropyLoss()
         self.mine_criterions = {
             "fg": MINELoss(
-                feature_dim=self.model.disentangle.num_features // 2,
+                feature_dim=self.model.num_fg_features,
                 ma_rate=FLAGS.mine_ma_rate,
             ).cuda(),
             "bg": MINELoss(
-                feature_dim=self.model.disentangle.num_features // 2,
+                feature_dim=self.model.num_bg_features,
                 ma_rate=FLAGS.mine_ma_rate,
             ).cuda(),
         }
@@ -168,6 +169,7 @@ def test(model, dataloader, desc):
 def main(argv):
     model = DisentangledModel(
         models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2),
+        num_bg_features=FLAGS.num_bg_features,
         lu_decompose=FLAGS.lu_decompose,
     )
     model.cuda()
