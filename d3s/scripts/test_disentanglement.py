@@ -22,6 +22,7 @@ flags.DEFINE_string(
     "/cmlscratch/pkattaki/datasets/d3s",
     "Path to D3S root directory. This should contain metadata.json",
 )
+flags.DEFINE_integer("num_bg_features", 250, "Number of background features")
 flags.DEFINE_string("model_ckpt", None, "Path to model checkpoint")
 flags.DEFINE_integer("num_iters", 100000, "Number of iterations to train for")
 flags.DEFINE_integer("num_workers", 4, "Number of workers to use for data loading")
@@ -51,10 +52,10 @@ class DisentanglementTestingModel(nn.Module):
 
     def forward(self, x):
         with torch.no_grad():
-            _, fg_features, bg_features = self.model(x)
+            fg_outputs, bg_outputs, fg_features, bg_features = self.model(x)
         fg_logits = self.fg_head(bg_features)
         bg_logits = self.bg_head(fg_features)
-        return fg_logits, bg_logits
+        return fg_outputs, bg_outputs, fg_logits, bg_logits
 
 
 class Trainer:
@@ -71,48 +72,57 @@ class Trainer:
 
     def train(self, batch):
         self.optimizer.zero_grad()
-        fg_logits, bg_logits = self.model(batch["images"])
+        _, _, fg_logits, bg_logits, = self.model(batch["images"])
         fg_loss = self.ce_criterion(fg_logits, batch["fg_labels"])
         bg_labels = batch["bg_labels"]
-        bg_loss = self.ce_criterion(bg_logits[-bg_labels.shape[0] :], bg_labels)
+        bg_loss = self.ce_criterion(bg_logits[:bg_labels.shape[0]], bg_labels)
         total_loss = fg_loss + bg_loss
         total_loss.backward()
         self.optimizer.step()
         return total_loss.item(), fg_loss.item(), bg_loss.item()
 
-
 @torch.no_grad()
 def test(model, dataloader, desc):
     model.eval()
-    fg_top1 = fg_top5 = bg_top1 = total = 0
+    fg_fg_top1 = fg_fg_top5 = bg_bg_top1 = fg_bg_top1 = fg_bg_top5 = bg_fg_top1 = total = 0
     for batch in tqdm(dataloader, desc=desc, leave=False, file=sys.stdout):
-        images = batch[0].cuda()
-        fg_labels = batch[1].cuda()
-        try:
-            bg_labels = batch[2].cuda()
-        except IndexError:
-            bg_labels = None
-        fg_outputs, bg_outputs = model(images)
-        _, fg_top5_indices = fg_outputs.topk(5, dim=1)
-        fg_top1_indices = fg_top5_indices[:, 0]
-        fg_top5 += (fg_top5_indices == fg_labels.unsqueeze(1)).sum().item()
-        fg_top1 += (fg_top1_indices == fg_labels).sum().item()
-        if bg_labels is not None:
-            bg_top1 += (bg_outputs.argmax(dim=1) == bg_labels).sum().item()
-        total += fg_labels.shape[0]
-    fg_top1 = 100 * fg_top1 / total
-    fg_top5 = 100 * fg_top5 / total
-    bg_top1 = 100 * bg_top1 / total
-    return fg_top1, fg_top5, bg_top1
+        images, labels = batch[:2]
+        images, labels = images.cuda(), labels.cuda()
+        fg_fg_outputs, bg_bg_outputs, fg_bg_outputs, bg_fg_outputs = model(images)
+        _, fg_fg_top5_indices = fg_fg_outputs.topk(5, dim=1)
+        fg_fg_top1_indices = fg_fg_top5_indices[:, 0]
+        fg_fg_top5 += (fg_fg_top5_indices == labels.unsqueeze(1)).sum().item()
+        fg_fg_top1 += (fg_fg_top1_indices == labels).sum().item()
 
+        _, fg_bg_top5_indices = fg_bg_outputs.topk(5, dim=1)
+        fg_bg_top1_indices = fg_bg_top5_indices[:, 0]
+        fg_bg_top5 += (fg_bg_top5_indices == labels.unsqueeze(1)).sum().item()
+        fg_bg_top1 += (fg_bg_top1_indices == labels).sum().item()
+        
+        if len(batch) == 3:
+            bg_bg_top1 += (bg_bg_outputs.argmax(dim=1).cpu() == batch[2]).sum().item()
+            bg_fg_top1 += (bg_fg_outputs.argmax(dim=1).cpu() == batch[2]).sum().item()
+        total += labels.shape[0]
+
+    fg_fg_top1 = 100 * fg_fg_top1 / total
+    fg_fg_top5 = 100 * fg_fg_top5 / total
+    bg_bg_top1 = 100 * bg_bg_top1 / total
+    fg_bg_top1 = 100 * fg_bg_top1 / total
+    fg_bg_top5 = 100 * fg_bg_top5 / total
+    bg_fg_top1 = 100 * bg_fg_top1 / total
+    return fg_fg_top1, fg_fg_top5, bg_bg_top1, fg_bg_top1, fg_bg_top5, bg_fg_top1
 
 def main(argv):
     disentangled_model = DisentangledModel(
         models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2),
-        lu_decompose=True,
+        num_bg_features=FLAGS.num_bg_features,
     )
     ckpt = torch.load(FLAGS.model_ckpt)
-    disentangled_model.load_state_dict(ckpt["model"])
+    model_ckpt = {}
+    for k, v in ckpt["trainer"].items():
+        if "model" in k:
+            model_ckpt[k.replace("model.", "", 1)] = v
+    disentangled_model.load_state_dict(model_ckpt)
     testing_model = DisentanglementTestingModel(disentangled_model)
     testing_model.cuda()
 
@@ -192,8 +202,8 @@ def main(argv):
             d3s_batch = next(train_d3s_iter)
 
         batch = {
-            "images": torch.cat([imagenet_batch[0], d3s_batch[0]], dim=0).cuda(),
-            "fg_labels": torch.cat([imagenet_batch[1], d3s_batch[1]], dim=0).cuda(),
+            "images": torch.cat([d3s_batch[0], imagenet_batch[0]]).cuda(),
+            "fg_labels": torch.cat([d3s_batch[1], imagenet_batch[1]]).cuda(),
             "bg_labels": d3s_batch[2].cuda(),
         }
 
@@ -204,21 +214,26 @@ def main(argv):
         writer.add_scalar("loss/bg_loss", bg_loss, i)
 
         if i % FLAGS.test_every == 0:
-            fg_top1, fg_top5, _ = test(
+            fg_fg_top1, fg_fg_top5, _, fg_bg_top1, fg_bg_top5, _ = test(
                 testing_model,
                 val_imagenet_dataloader,
                 f"Testing on ImageNet after {i} iterations",
             )
-            writer.add_scalar("imagenet/fg_top1", fg_top1, i)
-            writer.add_scalar("imagenet/fg_top5", fg_top5, i)
-            fg_top1, fg_top5, bg_top1 = test(
+            writer.add_scalar("imagenet/fg_fg_top1", fg_fg_top1, i)
+            writer.add_scalar("imagenet/fg_fg_top5", fg_fg_top5, i)
+            writer.add_scalar("imagenet/fg_bg_top1", fg_bg_top1, i)
+            writer.add_scalar("imagenet/fg_bg_top5", fg_bg_top5, i)
+            fg_fg_top1, fg_fg_top5, bg_bg_top1, fg_bg_top1, fg_bg_top5, bg_fg_top1 = test(
                 testing_model,
                 val_d3s_dataloader,
                 f"Testing on D3S after {i} iterations",
             )
-            writer.add_scalar("d3s/fg_top1", fg_top1, i)
-            writer.add_scalar("d3s/fg_top5", fg_top5, i)
-            writer.add_scalar("d3s/bg_top1", bg_top1, i)
+            writer.add_scalar("d3s/fg_fg_top1", fg_fg_top1, i)
+            writer.add_scalar("d3s/fg_fg_top5", fg_fg_top5, i)
+            writer.add_scalar("d3s/bg_bg_top1", bg_bg_top1, i)
+            writer.add_scalar("d3s/fg_bg_top1", fg_bg_top1, i)
+            writer.add_scalar("d3s/fg_bg_top5", fg_bg_top5, i)
+            writer.add_scalar("d3s/bg_fg_top1", bg_fg_top1, i)
 
     writer.add_custom_scalars(
         {
