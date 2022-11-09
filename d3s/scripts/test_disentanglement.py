@@ -81,6 +81,7 @@ class Trainer:
         self.optimizer.step()
         return total_loss.item(), fg_loss.item(), bg_loss.item()
 
+
 @torch.no_grad()
 def test(model, dataloader, desc):
     model.eval()
@@ -111,6 +112,7 @@ def test(model, dataloader, desc):
     fg_bg_top5 = 100 * fg_bg_top5 / total
     bg_fg_top1 = 100 * bg_fg_top1 / total
     return fg_fg_top1, fg_fg_top5, bg_bg_top1, fg_bg_top1, fg_bg_top5, bg_fg_top1
+
 
 def main(argv):
     disentangled_model = DisentangledModel(

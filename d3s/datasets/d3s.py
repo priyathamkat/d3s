@@ -16,7 +16,7 @@ class D3S(Dataset):
         self,
         root: Union[str, Path],
         split="train",
-        shift="all",
+        shift="background-shift",
         return_init=False,
         transform=None,
         target_transform=None,
