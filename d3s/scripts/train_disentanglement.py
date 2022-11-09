@@ -87,7 +87,7 @@ class WassersteinTrainer(nn.Module):
         )
 
         self.pretraining_optimizer = optim.SGD(
-            self.model.parameters(), lr=1e-3, momentum=0.9
+            self.model.parameters(), lr=model_lr, momentum=0.9
         )
         self.model_optimizer = self.create_optimizer(self.model, model_lr)
         self.discriminator_optimizers = {
