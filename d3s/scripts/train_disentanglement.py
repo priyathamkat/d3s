@@ -43,6 +43,7 @@ flags.DEFINE_float(
 flags.DEFINE_integer("test_every", 5000, "Test every n iterations")
 flags.DEFINE_string("log_folder", None, "Path to log folder")
 flags.DEFINE_integer("num_pretraining_iters", 2000, "Number of pretraining iterations")
+flags.DEFINE_bool("use_scheduler", False, "Use cosine annealing scheduler")
 
 
 class WassersteinTrainer(nn.Module):
@@ -61,6 +62,7 @@ class WassersteinTrainer(nn.Module):
         eta_min=1e-4,
         label_vector_dim_fraction=0.2,
         num_pretraining_iters=2000,
+        use_scheduler=False,
     ) -> None:
         super().__init__()
 
@@ -113,6 +115,7 @@ class WassersteinTrainer(nn.Module):
         self.train_discriminators = True
         self._train_count = 0
         self.num_pretraining_iters = num_pretraining_iters
+        self.use_scheduler = use_scheduler
 
     def create_mlp_discriminator(self, feature_dim):
         layers = []
@@ -197,8 +200,9 @@ class WassersteinTrainer(nn.Module):
             bg_discriminator_loss.backward()
             self.discriminator_optimizers["bg"].step()
 
-            for scheduler in self.discriminator_schedulers.values():
-                scheduler.step()
+            if self.use_scheduler:
+                for scheduler in self.discriminator_schedulers.values():
+                    scheduler.step()
 
             if self._train_count % self.train_model_every == 0:
                 self.train_discriminators = False
@@ -254,7 +258,8 @@ class WassersteinTrainer(nn.Module):
                 self.pretraining_optimizer.step()
             else:
                 self.model_optimizer.step()
-                self.model_scheduler.step()
+                if self.use_scheduler:
+                    self.model_scheduler.step()
 
             self.train_discriminators = True
 
@@ -345,12 +350,14 @@ def main(argv):
         model,
         alpha=FLAGS.alpha,
         train_model_every=FLAGS.train_model_every,
+        pretraining_lr=FLAGS.pretraining_lr,
         model_lr=FLAGS.model_lr,
         discriminator_lr=FLAGS.discriminator_lr,
         T_max=FLAGS.t_max,
         eta_min=FLAGS.eta_min,
         label_vector_dim_fraction=FLAGS.label_vector_dim_fraction,
         num_pretraining_iters=FLAGS.num_pretraining_iters,
+        use_scheduler=FLAGS.use_scheduler,
     ).cuda()
 
     now = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
