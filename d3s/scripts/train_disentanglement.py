@@ -30,6 +30,7 @@ flags.DEFINE_integer("train_batch_size", 32, "Batch size for training")
 flags.DEFINE_integer("val_batch_size", 64, "Batch size for validation")
 flags.DEFINE_float("alpha", 1.0, "Weight for cross entropy loss")
 flags.DEFINE_integer("train_model_every", 5, "Train model every n iterations")
+flags.DEFINE_float("pretraining_lr", 1e-3, "Learning rate for pretraining")
 flags.DEFINE_float("model_lr", 5e-3, "Learning rate for model")
 flags.DEFINE_float("discriminator_lr", 5e-3, "Learning rate for discriminators")
 flags.DEFINE_integer("t_max", 100, "T_max for cosine annealing")
@@ -53,6 +54,7 @@ class WassersteinTrainer(nn.Module):
         alpha=1.0,
         lamb=10,
         train_model_every=5,
+        pretraining_lr=1e-3,
         model_lr=1e-4,
         discriminator_lr=1e-4,
         T_max=100,
@@ -87,7 +89,7 @@ class WassersteinTrainer(nn.Module):
         )
 
         self.pretraining_optimizer = optim.SGD(
-            self.model.parameters(), lr=model_lr, momentum=0.9
+            self.model.parameters(), lr=pretraining_lr, momentum=0.9
         )
         self.model_optimizer = self.create_optimizer(self.model, model_lr)
         self.discriminator_optimizers = {
