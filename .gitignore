@@ -157,6 +157,7 @@ build
 
 # misc
 .DS_Store
+._.DS_Store
 .env.local
 .env.development.local
 .env.test.local
