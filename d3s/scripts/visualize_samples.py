@@ -1,12 +1,12 @@
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 from absl import app, flags
+from matplotlib.font_manager import FontProperties, fontManager
+from tqdm import tqdm
+
 from d3s.datasets import D3S
-from PIL import ImageDraw, ImageFont
-from torchvision import transforms as T
-from torchvision.utils import make_grid
-from tqdm import trange
 
 FLAGS = flags.FLAGS
 
@@ -17,12 +17,11 @@ flags.DEFINE_string(
 )
 flags.DEFINE_enum(
     "shift",
-    "all",
+    "background-shift",
     ["all", "background-shift", "geography-shift", "time-shift"],
     "Shift to use for evaluation",
 )
-flags.DEFINE_integer("num_images", 49, "Number of images to show.")
-flags.DEFINE_string("output_path", None, "Path of the output image.")
+flags.DEFINE_string("output_folder", None, "Path of the output image.")
 flags.DEFINE_bool(
     "include_class_names",
     True,
@@ -38,31 +37,31 @@ flags.DEFINE_bool(
 def main(argv):
     rng = np.random.default_rng(0)
     dataset = D3S(Path(FLAGS.d3s_root), return_init=FLAGS.return_init, shift=FLAGS.shift)
-    assert FLAGS.num_images <= len(
-        dataset
-    ), "Too few images in the dataset."
 
-    font = ImageFont.truetype(str(Path(__file__).parent.parent / "assets/Roboto-Black.ttf"), 30)
+    font_path = "/cmlscratch/pkattaki/void/d3s/d3s/assets/Roboto-Regular.ttf"
+    fontManager.addfont(font_path)
+    prop = FontProperties(fname=font_path, weight="regular")
 
-    images = []
-    for _ in trange(FLAGS.num_images):
-        idx = rng.choice(len(dataset))
-        image, label = dataset[idx]
-        if FLAGS.include_class_names:
-            class_name = dataset.classes[label]
-            image = ImageDraw.Draw(image)
-            position = (25, 25)
-            bbox = image.textbbox(position, class_name, font=font)
-            image.rectangle(bbox, fill="white")
-            image.text(position, class_name, font=font, fill="black")
-            image = image._image
-        images.append(T.ToTensor()(image))
+    print(prop)
 
-    output_image = make_grid(images, nrow=int(np.sqrt(FLAGS.num_images)))
-    output_image = T.ToPILImage()(output_image)
-    output_image.save(FLAGS.output_path)
+    plt.rcParams["font.family"] = "sans-serif"
+    plt.rcParams["font.sans-serif"] = prop.get_name()
+
+    class_idxs = [360, 853]
+
+    output_folder = Path(FLAGS.output_folder)
+    for i, class_idx in enumerate(tqdm(class_idxs)):
+        idx = rng.choice(dataset.class_to_indices[class_idx])
+        image, _, _ = dataset[idx]
+
+        _ = plt.figure()
+        plt.imshow(image)
+        plt.axis("off")
+        plt.tight_layout()
+        plt.savefig(output_folder / f"io-{i}.png")
+        print(dataset.metadata[idx]["prompt"])
 
 
 if __name__ == "__main__":
-    flags.mark_flags_as_required(["output_path"])
+    flags.mark_flags_as_required(["output_folder"])
     app.run(main)

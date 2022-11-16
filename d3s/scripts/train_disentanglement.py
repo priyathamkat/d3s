@@ -30,6 +30,7 @@ flags.DEFINE_integer("train_batch_size", 32, "Batch size for training")
 flags.DEFINE_integer("val_batch_size", 64, "Batch size for validation")
 flags.DEFINE_float("alpha", 1.0, "Weight for cross entropy loss")
 flags.DEFINE_integer("train_model_every", 5, "Train model every n iterations")
+flags.DEFINE_float("pretraining_lr", 1e-3, "Learning rate for pretraining")
 flags.DEFINE_float("model_lr", 5e-3, "Learning rate for model")
 flags.DEFINE_float("discriminator_lr", 5e-3, "Learning rate for discriminators")
 flags.DEFINE_integer("t_max", 100, "T_max for cosine annealing")
@@ -42,6 +43,7 @@ flags.DEFINE_float(
 flags.DEFINE_integer("test_every", 5000, "Test every n iterations")
 flags.DEFINE_string("log_folder", None, "Path to log folder")
 flags.DEFINE_integer("num_pretraining_iters", 2000, "Number of pretraining iterations")
+flags.DEFINE_bool("use_scheduler", False, "Use cosine annealing scheduler")
 
 
 class WassersteinTrainer(nn.Module):
@@ -53,12 +55,14 @@ class WassersteinTrainer(nn.Module):
         alpha=1.0,
         lamb=10,
         train_model_every=5,
+        pretraining_lr=1e-3,
         model_lr=1e-4,
         discriminator_lr=1e-4,
         T_max=100,
         eta_min=1e-4,
         label_vector_dim_fraction=0.2,
         num_pretraining_iters=2000,
+        use_scheduler=False,
     ) -> None:
         super().__init__()
 
@@ -87,7 +91,7 @@ class WassersteinTrainer(nn.Module):
         )
 
         self.pretraining_optimizer = optim.SGD(
-            self.model.parameters(), lr=model_lr, momentum=0.9
+            self.model.parameters(), lr=pretraining_lr, momentum=0.9
         )
         self.model_optimizer = self.create_optimizer(self.model, model_lr)
         self.discriminator_optimizers = {
@@ -111,6 +115,7 @@ class WassersteinTrainer(nn.Module):
         self.train_discriminators = True
         self._train_count = 0
         self.num_pretraining_iters = num_pretraining_iters
+        self.use_scheduler = use_scheduler
 
     def create_mlp_discriminator(self, feature_dim):
         layers = []
@@ -195,8 +200,9 @@ class WassersteinTrainer(nn.Module):
             bg_discriminator_loss.backward()
             self.discriminator_optimizers["bg"].step()
 
-            for scheduler in self.discriminator_schedulers.values():
-                scheduler.step()
+            if self.use_scheduler:
+                for scheduler in self.discriminator_schedulers.values():
+                    scheduler.step()
 
             if self._train_count % self.train_model_every == 0:
                 self.train_discriminators = False
@@ -252,7 +258,8 @@ class WassersteinTrainer(nn.Module):
                 self.pretraining_optimizer.step()
             else:
                 self.model_optimizer.step()
-                self.model_scheduler.step()
+                if self.use_scheduler:
+                    self.model_scheduler.step()
 
             self.train_discriminators = True
 
@@ -343,12 +350,14 @@ def main(argv):
         model,
         alpha=FLAGS.alpha,
         train_model_every=FLAGS.train_model_every,
+        pretraining_lr=FLAGS.pretraining_lr,
         model_lr=FLAGS.model_lr,
         discriminator_lr=FLAGS.discriminator_lr,
         T_max=FLAGS.t_max,
         eta_min=FLAGS.eta_min,
         label_vector_dim_fraction=FLAGS.label_vector_dim_fraction,
         num_pretraining_iters=FLAGS.num_pretraining_iters,
+        use_scheduler=FLAGS.use_scheduler,
     ).cuda()
 
     now = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
