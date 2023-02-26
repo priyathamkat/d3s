@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-import clip
 import torch
 import torch.nn as nn
 import torchvision.transforms as T
