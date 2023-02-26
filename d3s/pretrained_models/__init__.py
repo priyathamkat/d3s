@@ -1,3 +1,4 @@
 from .clip_zero_shot_classifier import CLIPZeroShotClassifier
 from .dino import DINO
 from .robust_resnet import RobustResNet50
+from .flava_zero_shot_classifier import FlavaZeroShotClassifier

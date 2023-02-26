@@ -9,7 +9,12 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from d3s.datasets import D3S, ImageNet
-from d3s.pretrained_models import DINO, CLIPZeroShotClassifier, RobustResNet50
+from d3s.pretrained_models import (
+    DINO,
+    CLIPZeroShotClassifier,
+    FlavaZeroShotClassifier,
+    RobustResNet50,
+)
 
 FLAGS = flags.FLAGS
 
@@ -37,7 +42,14 @@ def test(model, dataloader, device, pbar, is_d3s=False, num_classes=0, num_bgs=0
     stats = torch.zeros(3, num_classes, num_bgs) if is_d3s else None
     for batch in dataloader:
         images, class_idxs = batch[:2]
-        images = images.to(device)
+
+        if not isinstance(class_idxs, torch.Tensor):
+            class_idxs = torch.tensor(class_idxs)
+
+        try:
+            images = images.to(device)
+        except AttributeError:  # when images is a list
+            pass
 
         outputs = model(images)
         _, top5_preds = outputs.topk(5, dim=1)
@@ -73,6 +85,9 @@ def evaluate_model(model_name, output_folder, pbar):
     elif model_name.startswith("clip"):
         model = CLIPZeroShotClassifier(model_name, device)
         transform = model.transform
+    elif "flava" in model_name:
+        model = FlavaZeroShotClassifier(model_name, device)
+        transform = model.transform
     elif model_name.startswith("robust"):
         model = RobustResNet50(model_name)
         transform = model.transform
@@ -88,6 +103,7 @@ def evaluate_model(model_name, output_folder, pbar):
         batch_size=FLAGS.batch_size,
         shuffle=False,
         num_workers=FLAGS.num_workers,
+        collate_fn=lambda x: list(zip(*x)) if transform is None else None,
         pin_memory=True,
     )
     imagenet_top1, imagenet_top5, _ = test(
@@ -103,6 +119,7 @@ def evaluate_model(model_name, output_folder, pbar):
         batch_size=FLAGS.batch_size,
         shuffle=False,
         num_workers=FLAGS.num_workers,
+        collate_fn=lambda x: list(zip(*x)) if transform is None else None,
         pin_memory=True,
     )
     d3s_top1, d3s_top5, d3s_stats = test(
@@ -177,6 +194,7 @@ def main(argv):
         "clip-RN50x64",
         "clip-ViT-B/32",
         "clip-ViT-L/14@336px",
+        "facebook/flava-full",
         # https://github.com/MadryLab/robustness
         "robust_resnet50_l2",
         "robust_resnet50_linf",
